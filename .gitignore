@@ -97,3 +97,10 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# JetBrains project settings
+.idea
+
+# test environment
+_test.py
+_old.py
