@@ -45,6 +45,9 @@ class Property:
     def __ge__(self, other):
         return self.tag >= other.tag
 
+    def __getitem__(self, item):
+        return self.val[item]
+
     def __gt__(self, other):
         return self.tag > other.tag
 
@@ -67,7 +70,7 @@ class Property:
         return "Property({0}, {1})".format(self.tag, self.val)
 
     def __str__(self):
-        return str(self.val)
+        return format(self)
 
     def lower(self):
         return Property(self.tag.lower(), copy.deepcopy(self.val))
@@ -268,6 +271,16 @@ class Qoid:
                 return self.val[index]
             raise IndexError("Qoid index out of range".format(index))
 
+    def all_of(self, tag: str):
+        if tag:
+            out = []
+            for e in self:
+                if e.tag == tag:
+                    out.append(e.val)
+            return out
+        else:
+            raise QoidError("{0}".format(tag))
+
     """Get the first index of a property with the given tag"""
     def index(self, item):
         if isinstance(item, Property):
@@ -329,6 +342,24 @@ class Qoid:
 
     def reverse(self):
         self.val = reversed(self.val)
+
+    """
+    Get the first property which matches the given tag, or the property at the given index.
+    If no argument is specified, returns all contents.
+    """
+    def set(self, tag=None, index=-1, val=None):
+        if tag:
+            tag = str(tag)
+            for e in self:
+                if e.tag == tag:
+                    e.set(tag, val)
+                    return
+            raise QoidError("'{0}'".format(tag))
+        else:
+            if len(self) > index >= 0:
+                self.val[index].set(val=val)
+                return
+            raise IndexError("Qoid index out of range".format(index))
 
     def sort(self, ignore_case=True):
         self.val = sorted(self.val, key=Qoid.lower if ignore_case else None)
@@ -403,11 +434,11 @@ class Index:
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return [self.val[i].val for i in range(item.start, item.stop, item.step)]
+            return [self.val[i] for i in range(item.start, item.stop, item.step)]
         elif isinstance(item, int):
-            return self.get(index=item).val
+            return self.get(index=item)
         elif isinstance(item, str):
-            return self.get(tag=item).val
+            return self.get(tag=item)
         else:
             raise ValueError("Invalid type {0}, must use slice, int, or str".format(type(item)))
 
@@ -563,6 +594,7 @@ class Index:
 
     @staticmethod
     def open(path: str):
+        path = path.replace("/", "\\")
         if os.path.isfile(path):
             with open(path, "r") as f:
                 mode = "." + path.rsplit(".", 1)[1]
@@ -576,7 +608,7 @@ class Index:
                 tag = path.split("\\")[-1].rsplit(".", 1)[0]
                 out = Index.parse(source, tag=tag)
                 out.mode = mode
-                out.path = path.rsplit("\\", 1)[0]
+                out.path = path
                 return out
         else:
             raise FileNotFoundError("Invalid source specified: {0}".format(path))
@@ -593,14 +625,15 @@ class Index:
             val = []
             for x in range(len(source)):
                 if state == 0:
-                    if len(source[x]) == 0:
+                    if not source[x]:
                         pass
                     elif source[x][0] == '#':
                         spool = Qoid(source[x][1:])
                         state = 1
                 else:
-                    if len(source[x]) == 0:
+                    if not source[x]:
                         val.append(spool)
+                        spool = None
                         state = 0
                     elif source[x][0] == "/":
                         pass
@@ -608,6 +641,8 @@ class Index:
                         s = source[x].split(':', 1)
                         p = Property(tag=s[0], val=s[1].strip() if len(s) == 2 else "")
                         spool += p
+            if spool:
+                val.append(spool)
             return Index(tag=tag, val=val)
         elif isinstance(source, dict):
             qoids = []
@@ -673,17 +708,13 @@ class Index:
         self.val = sorted(self.val, key=Index.lower if ignore_case else None)
 
     def save(self, echo=False):
-        if not os.path.isdir(self.path):
-            os.mkdir(self.path)
-        p = self.path + "\\" + self.tag + self.mode
-        m = "w" if os.path.isfile(p) else "w+"
-        with open(p, m) as out:
+        with open(self.path, 'w') as out:
             if self.mode == ".cxr":
                 out.write(format(self))
             else:
                 json.dump(obj=self.pack(), fp=out)
         if echo:
-            print("{0} saved to {1}\{2}{3}".format(self.tag, self.path, self.tag, self.mode))
+            print("{0} saved to {1}".format(self.tag, self.path))
 
     """Get the set of all tags in this index"""
     def tags(self):
@@ -754,11 +785,11 @@ class Register:
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return [self.val[i].val for i in range(item.start, item.stop, item.step)]
+            return [self.val[i] for i in range(item.start, item.stop, item.step)]
         elif isinstance(item, int):
-            return self.get(index=item).val
+            return self.get(index=item)
         elif isinstance(item, str):
-            return self.get(tag=item).val
+            return self.get(tag=item)
         else:
             raise ValueError("Invalid type {0}, must use slice, int, or str".format(type(item)))
 
@@ -911,6 +942,7 @@ class Register:
 
     @staticmethod
     def open(path: str):
+        path = path.replace("/", "\\")
         if os.path.isdir(path):
             out = Register(tag=path.split("\\")[-1])
             out.path = path.rsplit("\\", 1)[0]
