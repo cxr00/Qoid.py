@@ -24,7 +24,7 @@ class Property:
 
     def __add__(self, other):
         if isinstance(other, Property):
-            return Qoid("{0} + {1}".format(self.tag, other.tag), [self, other])
+            return Qoid(f"{self.tag} + {other.tag}", [self, other])
         else:
             return NotImplemented
 
@@ -38,9 +38,9 @@ class Property:
 
     def __format__(self, format_spec):
         if format_spec:
-            return self.tag + ((format_spec + " " + self.val) if self.val else "")
+            return self.tag + (f"{format_spec} {self.val}" if self.val else "")
         else:
-            return self.tag + ((": " + self.val) if self.val else "")
+            return self.tag + (f": {self.val}" if self.val else "")
 
     def __ge__(self, other):
         return self.tag >= other.tag
@@ -67,7 +67,7 @@ class Property:
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "Property({0}, {1})".format(self.tag, self.val)
+        return f"Property({self.tag}, {self.val})"
 
     def __str__(self):
         return format(self)
@@ -96,9 +96,9 @@ class Qoid:
                         self.append(e)
                     else:
                         err = [val.index(e), type(e)]
-                        raise TypeError("Invalid element val[{0}] of type {1}: must contain only Property".format(*err))
+                        raise TypeError(f"Invalid element val[{err[0]}] of type {err[1]}: must contain only Property")
             else:
-                raise ValueError("Invalid val type {0}: must submit Qoid or list".format(type(val)))
+                raise ValueError(f"Invalid val type {type(val)}: must submit Qoid or list")
 
     def __add__(self, other):
         out = copy.deepcopy(self)
@@ -125,7 +125,7 @@ class Qoid:
         elif isinstance(key, str):
             del self.val[self.index(key)]
         else:
-            raise ValueError("Invalid type {0}, must use int or str".format(type(key)))
+            raise ValueError(f"Invalid type {type(key)}, must use int or str")
 
     def __eq__(self, other):
         if isinstance(other, Qoid):
@@ -133,7 +133,7 @@ class Qoid:
         return False
 
     def __format__(self, format_spec):
-        out = "#{0}\n".format(self.tag)
+        out = f"#{self.tag}\n"
         for e in self:
             out += format(e, format_spec) + "\n"
         return out
@@ -149,7 +149,7 @@ class Qoid:
         elif isinstance(item, str):
             return self.get(tag=item).val
         else:
-            raise ValueError("Invalid type {0}, must use slice, int, or str".format(type(item)))
+            raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
     def __gt__(self, other):
         return self.tag > other.tag
@@ -168,7 +168,7 @@ class Qoid:
                 out.append(e)
             return out
         else:
-            raise ValueError("Incompatible operands {0} and {1}".format(type(self), type(other)))
+            raise ValueError(f"Incompatible operands {type(self)} and {type(other)}")
 
     def __iter__(self):
         return iter(self.val)
@@ -194,7 +194,7 @@ class Qoid:
             return NotImplemented
 
     def __repr__(self):
-        return "Qoid({0}, {1})".format(self.tag, self.val)
+        return f"Qoid({self.tag}, {self.val})"
 
     def __reversed__(self):
         return Qoid(self.tag, val=reversed(self.val))
@@ -205,7 +205,7 @@ class Qoid:
         elif isinstance(key, str):
             self.val[self.index(key)] = value
         else:
-            raise TypeError("Unsupported type {0} for key in Qoid.__setitem__(self, key, value)".format(type(key)))
+            raise TypeError(f"Unsupported type {type(key)} for key in Qoid.__setitem__(self, key, value)")
 
     def __sub__(self, subtra):
         out = copy.deepcopy(self)
@@ -229,7 +229,7 @@ class Qoid:
                         pass
             return out
         else:
-            raise TypeError("Unsupported type {0} for subtrahend in Qoid.__sub__(self, subtra)".format(type(subtra)))
+            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Qoid.__sub__(self, subtra)")
 
     def __str__(self):
         return format(self)
@@ -246,14 +246,14 @@ class Qoid:
     def extend(self, val: iter):
         for e in self:
             if not isinstance(val, Property):
-                raise TypeError("Unsupported {0} in iterable, only Property is allowed".format(type(e)))
+                raise TypeError(f"Unsupported {type(e)} in iterable, only Property is allowed")
         self.val.extend(val)
 
     def find(self, tag: str):
         for e in self:
             if e.tag == tag:
                 return e
-        raise QoidError("'{0}'".format(tag))
+        raise QoidError(f"'{tag}'")
 
     """
     Get the first property which matches the given tag, or the property at the given index.
@@ -265,11 +265,11 @@ class Qoid:
             for e in self:
                 if e.tag == tag:
                     return e
-            raise QoidError("'{0}'".format(tag))
+            raise QoidError(f"'{tag}'")
         else:
             if len(self) > index >= 0:
                 return self.val[index]
-            raise IndexError("Qoid index out of range".format(index))
+            raise IndexError(f"Qoid index {index} out of range")
 
     def all_of(self, tag: str):
         if tag:
@@ -279,7 +279,7 @@ class Qoid:
                     out.append(e.val)
             return out
         else:
-            raise QoidError("{0}".format(tag))
+            raise QoidError(f"{tag}")
 
     """Get the first index of a property with the given tag"""
     def index(self, item):
@@ -287,14 +287,14 @@ class Qoid:
             for e in self:
                 if item == e:
                     return self.val.index(e)
-            raise QoidError("'{0}'".format(item))
+            raise QoidError(f"'{item}'")
         elif isinstance(item, str):
             for e in self:
                 if item == e.tag:
                     return self.val.index(e)
-            raise QoidError("'{0}'".format(format(item)))
+            raise QoidError(f"'{item}'")
         else:
-            raise TypeError("Invalid type {0}, must use Property or str".format(type(item)))
+            raise TypeError(f"Invalid type {type(item)}, must use Property or str")
 
     def insert(self, index, obj):
         if isinstance(index, int):
@@ -303,9 +303,9 @@ class Qoid:
             elif isinstance(obj, Qoid):
                 self.val = self[:index] + obj.val + self[index:]
             else:
-                raise TypeError("Unsupported type '{0}', must be 'Property' or 'Qoid'".format(type(obj)))
+                raise TypeError(f"Unsupported type '{type(obj)}', must be 'Property' or 'Qoid'")
         else:
-            raise TypeError("Unsupported type '{0}', must be 'int'".format(type(obj)))
+            raise TypeError(f"Unsupported type '{type(obj)}', must be 'int'")
 
     def lower(self):
         return Qoid(self.tag.lower(), copy.deepcopy(self.val))
@@ -331,14 +331,14 @@ class Qoid:
             for e in self:
                 if e.tag == this:
                     return self.val.pop(self.val.index(e))
-            raise QoidError("'{0}'".format(this))
+            raise QoidError(f"'{this}'")
         elif isinstance(this, Property):
             for e in self:
                 if e == this:
                     return self.val.pop(self.val.index(e))
-            raise QoidError("'{0}'".format(format(this)))
+            raise QoidError(f"'{this}'")
         else:
-            raise TypeError("Unsupported type {0}, must be int, str, or Property".format(type(this)))
+            raise TypeError(f"Unsupported type {type(this)}, must be int, str, or Property")
 
     def reverse(self):
         self.val = reversed(self.val)
@@ -354,12 +354,12 @@ class Qoid:
                 if e.tag == tag:
                     e.set(tag, val)
                     return
-            raise QoidError("'{0}'".format(tag))
+            raise QoidError(f"'{tag}'")
         else:
             if len(self) > index >= 0:
                 self.val[index].set(val=val)
                 return
-            raise IndexError("Qoid index out of range".format(index))
+            raise IndexError("Qoid index out of range")
 
     def sort(self, ignore_case=True):
         self.val = sorted(self.val, key=Qoid.lower if ignore_case else None)
@@ -385,7 +385,7 @@ class Index:
                     if isinstance(e, Qoid):
                         self.append(e)
             else:
-                raise ValueError("Invalid val type {0}, must submit Index or list".format(type(val)))
+                raise ValueError(f"Invalid val type {type(val)}, must submit Index or list")
         if path:
             self.path = path
         if mode:
@@ -416,7 +416,7 @@ class Index:
         elif isinstance(key, str):
             del self.val[self.index(key)]
         else:
-            raise ValueError("Invalid type {0}, must use int or str".format(type(key)))
+            raise ValueError(f"Invalid type {type(key)}, must use int or str")
 
     def __eq__(self, other):
         if isinstance(other, Index):
@@ -440,7 +440,7 @@ class Index:
         elif isinstance(item, str):
             return self.get(tag=item)
         else:
-            raise ValueError("Invalid type {0}, must use slice, int, or str".format(type(item)))
+            raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
     def __gt__(self, other):
         return self.tag > other.tag
@@ -459,7 +459,7 @@ class Index:
                 out.append(e)
             return out
         else:
-            raise ValueError("Incompatible operands {0} and {1}".format(type(self), type(other)))
+            raise ValueError(f"Incompatible operands {type(self)} and {type(other)}")
 
     def __iter__(self):
         return iter(self.val)
@@ -485,7 +485,7 @@ class Index:
             return NotImplemented
 
     def __repr__(self):
-        return "Index({0}, {1})".format(self.tag, self.val)
+        return f"Index({self.tag}, {self.val})"
 
     def __reversed__(self):
         return Index(self.tag, val=reversed(self.val))
@@ -496,7 +496,7 @@ class Index:
         elif isinstance(key, str):
             self.val[self.index(key)] = value
         else:
-            raise TypeError("Unsupported type {0} for 'key' in Qoid.__setitem__(self, key, value)".format(type(key)))
+            raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value)")
 
     def __sub__(self, subtra):
         out = copy.deepcopy(self)
@@ -520,7 +520,7 @@ class Index:
                         pass
             return out
         else:
-            raise TypeError("Unsupported type {0} for subtrahend in Index.__sub__(self, subtra)".format(type(subtra)))
+            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Index.__sub__(self, subtra)")
 
     def __str__(self):
         return format(self)
@@ -537,14 +537,14 @@ class Index:
     def extend(self, val: iter):
         for e in self:
             if not isinstance(val, Qoid):
-                raise TypeError("Unsupported {0} in iterable, only Property is allowed".format(type(e)))
+                raise TypeError(f"Unsupported {type(e)} in iterable, only Property is allowed")
         self.val.extend(val)
 
     def find(self, tag: str):
         for e in self:
             if e.tag == tag:
                 return e
-        raise QoidError("'{0}'".format(tag))
+        raise QoidError(f"'{tag}'")
 
     """
     Get the first Qoid which matches the given tag, or the property at the given index.
@@ -557,11 +557,11 @@ class Index:
             for e in self:
                 if e.tag == tag:
                     return e
-            raise QoidError("'{0}'".format(tag))
+            raise QoidError(f"'{tag}'")
         else:
             if len(self) > index >= 0:
                 return self.val[index]
-            raise IndexError("Qoid index out of range".format(index))
+            raise IndexError("Qoid index out of range")
 
     """Get the first index of a property with the given tag"""
     def index(self, item):
@@ -569,14 +569,14 @@ class Index:
             for e in self:
                 if item == e:
                     return self.val.index(e)
-            raise QoidError("'{0}'".format(item))
+            raise QoidError(f"'{item}'")
         elif isinstance(item, str):
             for e in self:
                 if item == e.tag:
                     return self.val.index(e)
-            raise QoidError("'{0}'".format(format(item)))
+            raise QoidError(f"'{format(item)}'")
         else:
-            raise TypeError("Invalid type {0}, must use Property or str".format(type(item)))
+            raise TypeError(f"Invalid type {type(item)}, must use Property or str")
 
     def insert(self, index, obj):
         if isinstance(index, int):
@@ -585,9 +585,9 @@ class Index:
             elif isinstance(obj, Index):
                 self.val = self[:index] + obj.val + self[index:]
             else:
-                raise TypeError("Unsupported type '{0}', must be 'Property' or 'Qoid'".format(type(obj)))
+                raise TypeError(f"Unsupported type '{type(obj)}', must be 'Property' or 'Qoid'")
         else:
-            raise TypeError("Unsupported type '{0}', must be 'int'".format(type(obj)))
+            raise TypeError(f"Unsupported type '{type(obj)}', must be 'int'")
 
     def lower(self):
         return Index(self.tag.lower(), copy.deepcopy(self.val))
@@ -611,7 +611,7 @@ class Index:
                 out.path = path
                 return out
         else:
-            raise FileNotFoundError("Invalid source specified: {0}".format(path))
+            raise FileNotFoundError(f"Invalid source specified: {path}")
 
     """Pack the contents of this index into a json-serialized format"""
     def pack(self):
@@ -672,7 +672,7 @@ class Index:
                     raise QoidParseError("Invalid JSCON format: json item is not a tag-value pair")
             return Index(tag=tag, val=qoids)
         else:
-            raise TypeError("Illegal source of type {0}: must be list or dict".format(type(source)))
+            raise TypeError(f"Illegal source of type {type(source)}: must be list or dict")
 
     def pop(self, index=-1):
         if index == -1:
@@ -692,14 +692,14 @@ class Index:
             for e in self:
                 if e.tag == this:
                     return self.val.pop(self.val.index(e))
-            raise QoidError("'{0}'".format(this))
+            raise QoidError(f"'{this}'")
         elif isinstance(this, Qoid):
             for e in self:
                 if e == this:
                     return self.val.pop(self.val.index(e))
-            raise QoidError("'{0}: {1} item(s)'".format(this.tag, len(this)))
+            raise QoidError("'{this.tag}: {len(this)} item(s)'")
         else:
-            raise TypeError("Unsupported type {0}, must be int, str, or Property".format(type(this)))
+            raise TypeError(f"Unsupported type {type(this)}, must be int, str, or Property")
 
     def reverse(self):
         self.val = reversed(self.val)
@@ -714,7 +714,7 @@ class Index:
             else:
                 json.dump(obj=self.pack(), fp=out)
         if echo:
-            print("{0} saved to {1}".format(self.tag, self.path))
+            print(f"{self.tag} saved to {self.path}")
 
     """Get the set of all tags in this index"""
     def tags(self):
@@ -737,7 +737,7 @@ class Register:
                     if isinstance(e, (Register, Index)):
                         self.append(e)
             else:
-                raise ValueError("Invalid val type {0}, must submit Index or list".format(type(val)))
+                raise ValueError(f"Invalid val type {type(val)}, must submit Index or list")
         if path:
             self.path = path
 
@@ -766,7 +766,7 @@ class Register:
         elif isinstance(key, str):
             del self.val[self.index(key)]
         else:
-            raise ValueError("Invalid type {0}, must use int or str".format(type(key)))
+            raise ValueError(f"Invalid type {type(key)}, must use int or str")
 
     def __eq__(self, other):
         if isinstance(other, Register):
@@ -776,7 +776,7 @@ class Register:
     def __format__(self, format_spec):
         out = ""
         for e in self:
-            out += "/ {0}\n\n".format(e.tag)
+            out += f"/ {e.tag}\n\n"
             out += format(e, format_spec)
         return out
 
@@ -791,7 +791,7 @@ class Register:
         elif isinstance(item, str):
             return self.get(tag=item)
         else:
-            raise ValueError("Invalid type {0}, must use slice, int, or str".format(type(item)))
+            raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
     def __gt__(self, other):
         return self.tag > other.tag
@@ -810,7 +810,7 @@ class Register:
                 out.append(e)
             return out
         else:
-            raise ValueError("Incompatible operands {0} and {1}".format(type(self), type(other)))
+            raise ValueError(f"Incompatible operands {type(self)} and {type(other)}")
 
     def __iter__(self):
         return iter(self.val)
@@ -836,7 +836,7 @@ class Register:
             return NotImplemented
 
     def __repr__(self):
-        return "Register({0}, {1})".format(self.tag, self.val)
+        return f"Register({self.tag}, {self.val})"
 
     def __reversed__(self):
         return Register(self.tag, val=reversed(self.val))
@@ -847,7 +847,7 @@ class Register:
         elif isinstance(key, str):
             self.val[self.index(key)] = value
         else:
-            raise TypeError("Unsupported type {0} for 'key' in Qoid.__setitem__(self, key, value)".format(type(key)))
+            raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value)")
 
     """Subtraction removes the subtrahend from the minuend if it exists"""
     def __sub__(self, subtra):
@@ -872,7 +872,7 @@ class Register:
                         pass
             return out
         else:
-            raise TypeError("Unsupported type {0} for subtrahend in Qoid.__sub__(self, subtra)".format(type(subtra)))
+            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Qoid.__sub__(self, subtra)")
 
     def __str__(self):
         return format(self)
@@ -890,14 +890,14 @@ class Register:
     def extend(self, val):
         for e in self:
             if not isinstance(val, (Register, Index)):
-                raise TypeError("Unsupported {0} in iterable, only Register or Index is allowed".format(type(e)))
+                raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Index is allowed")
         self.val.extend(val)
 
     def find(self, tag):
         for e in self:
             if e.tag == tag:
                 return e
-        raise QoidError("'{0}'".format(tag))
+        raise QoidError(f"'{tag}'")
 
     """Return the value at the given"""
     def get(self, tag=None, index=-1):
@@ -906,25 +906,25 @@ class Register:
             for e in self:
                 if e.tag == tag:
                     return e
-            raise QoidError("'{0}'".format(tag))
+            raise QoidError(f"'{tag}'")
         else:
             if len(self) > index >= 0:
                 return self.val[index]
-            raise IndexError("Qoid index out of range".format(index))
+            raise IndexError("Qoid index out of range")
 
     def index(self, item):
         if isinstance(item, (Register, Index)):
             for e in self:
                 if item == e:
                     return self.val.index(e)
-            raise QoidError("'{0}'".format(item))
+            raise QoidError(f"'{item}'")
         elif isinstance(item, str):
             for e in self:
                 if item == e.tag:
                     return self.val.index(e)
-            raise QoidError("'{0}'".format(format(item)))
+            raise QoidError(f"'{format(item)}'")
         else:
-            raise TypeError("Invalid type {0}, must use Property or str".format(type(item)))
+            raise TypeError(f"Invalid type {type(item)}, must use Property or str")
 
     def insert(self, index, obj):
         if isinstance(index, int):
@@ -933,9 +933,9 @@ class Register:
             elif isinstance(obj, Register):
                 self.val = self[:index] + obj.val + self[index:]
             else:
-                raise TypeError("Unsupported type '{0}', must be 'Property' or 'Qoid'".format(type(obj)))
+                raise TypeError(f"Unsupported type '{type(obj)}', must be 'Property' or 'Qoid'")
         else:
-            raise TypeError("Unsupported type '{0}', must be 'int'".format(type(obj)))
+            raise TypeError(f"Unsupported type '{type(obj)}', must be 'int'")
 
     def lower(self):
         return Register(self.tag.lower(), copy.deepcopy(self.val))
@@ -951,10 +951,10 @@ class Register:
                     i = Index.open(path + "\\" + e)
                     out += i
                 except QoidError as qe:
-                    print("Ignoring non-qoid at {0}".format(path + "\\" + e))
+                    print(f"Ignoring non-qoid at {path}\\{e}")
             return out
         else:
-            raise NotADirectoryError("Invalid source specified: {0}".format(path))
+            raise NotADirectoryError(f"Invalid source specified: {path}")
 
     def pop(self, index=-1):
         if index == -1:
@@ -973,14 +973,14 @@ class Register:
             for e in self:
                 if e.tag == this:
                     return self.val.pop(self.val.index(e))
-            raise QoidError("'{0}'".format(this))
+            raise QoidError(f"'{this}'")
         elif isinstance(this, (Register, Index)):
             for e in self:
                 if e == this:
                     return self.val.pop(self.val.index(e))
-            raise QoidError("'{0}: {1} item(s)'".format(this.tag, len(this)))
+            raise QoidError("'{this.tag}: {len(this)} item(s)'")
         else:
-            raise TypeError("Unsupported type {0}, must be int, str, Register, or Index".format(type(this)))
+            raise TypeError(f"Unsupported type {type(this)}, must be int, str, Register, or Index")
 
     def reverse(self):
         self.val = reversed(self.val)
@@ -992,7 +992,7 @@ class Register:
         for e in self:
             e.save(echo=echo)
         if echo:
-            print("Register {0} saved to {1}".format(self.tag, self.path))
+            print(f"Register {self.tag} saved to {self.path}")
 
     def tags(self):
         return [e.tag for e in self]
