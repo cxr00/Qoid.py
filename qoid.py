@@ -201,9 +201,19 @@ class Qoid:
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
-            self.val[key] = value
+            if isinstance(value, Property):
+                self.val[key] = value
+            elif isinstance(value, tuple) and len(value) == 2:
+                self.val[key] = Property(value[0], value[1])
+            else:
+                self.val[key] = Property(self.val[key].tag, value)
         elif isinstance(key, str):
-            self.val[self.index(key)] = value
+            if isinstance(value, Property):
+                self.val[self.index(key)] = value
+            elif isinstance(value, tuple) and len(value) == 2:
+                self.val[self.index(key)] = Property(value[0], value[1])
+            else:
+                self.val[self.index(key)] = Property(key, value)
         else:
             raise TypeError(f"Unsupported type {type(key)} for key in Qoid.__setitem__(self, key, value)")
 
@@ -492,9 +502,19 @@ class Index:
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
-            self.val[key] = value
+            if isinstance(value, Qoid):
+                self.val[key] = value
+            elif isinstance(value, tuple) and len(value) == 2:
+                self.val[key] = Qoid(value[0], value[1])
+            else:
+                self.val[key] = Qoid(self.val[key].tag, value)
         elif isinstance(key, str):
-            self.val[self.index(key)] = value
+            if isinstance(value, Qoid):
+                self.val[self.index(key)] = value
+            elif isinstance(value, tuple) and len(value) == 2:
+                self.val[self.index(key)] = Qoid(value[0], value[1])
+            else:
+                self.val[self.index(key)] = Qoid(key, value)
         else:
             raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value)")
 
@@ -843,9 +863,19 @@ class Register:
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
-            self.val[key] = value
+            if isinstance(value, Index):
+                self.val[key] = value
+            elif isinstance(value, tuple) and len(value) == 2:
+                self.val[key] = Index(value[0], value[1])
+            else:
+                self.val[key] = Index(self.val[key].tag, value)
         elif isinstance(key, str):
-            self.val[self.index(key)] = value
+            if isinstance(value, Index):
+                self.val[self.index(key)] = value
+            elif isinstance(value, tuple) and len(value) == 2:
+                self.val[self.index(key)] = Index(value[0], value[1])
+            else:
+                self.val[self.index(key)] = Index(key, value)
         else:
             raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value)")
 
