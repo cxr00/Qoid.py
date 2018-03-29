@@ -143,7 +143,10 @@ class Qoid:
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return [self.val[i].val for i in range(item.start, item.stop, item.step)]
+            start = item.start if item.start else 0
+            stop = item.stop if item.stop else len(self)
+            step = item.step if item.step else 1
+            return [self.val[i].val for i in range(start, stop, step)]
         elif isinstance(item, int):
             return self.get(index=item).val
         elif isinstance(item, str):
@@ -444,7 +447,10 @@ class Index:
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return [self.val[i] for i in range(item.start, item.stop, item.step)]
+            start = item.start if item.start else 0
+            stop = item.stop if item.stop else len(self)
+            step = item.step if item.step else 1
+            return [self.val[i] for i in range(start, stop, step)]
         elif isinstance(item, int):
             return self.get(index=item)
         elif isinstance(item, str):
@@ -805,7 +811,10 @@ class Register:
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            return [self.val[i] for i in range(item.start, item.stop, item.step)]
+            start = item.start if item.start else 0
+            stop = item.stop if item.stop else len(self)
+            step = item.step if item.step else 1
+            return [self.val[i] for i in range(start, stop, step)]
         elif isinstance(item, int):
             return self.get(index=item)
         elif isinstance(item, str):
