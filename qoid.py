@@ -7,6 +7,8 @@ import json
 import copy
 
 
+ospath = os.getcwd()
+
 class QoidError(KeyError):
     __doc__ = "A QoidError is raised for KeyErrors and KeyError-like problems which occur specifically in qoid.py."
 
@@ -385,11 +387,10 @@ class Qoid:
 
 
 class Index:
-    path = os.getcwd()
     mode = ".cxr"
     __doc__ = "An Index is a Qoid whose elements are Qoids"
 
-    def __init__(self, tag: str, val=None, path=None, mode=None):
+    def __init__(self, tag: str, val=None, path=None, mode=None, local=False):
         self.tag = str(tag)
         self.val = []
         if val:
@@ -399,7 +400,9 @@ class Index:
                         self.append(e)
             else:
                 raise ValueError(f"Invalid val type {type(val)}, must submit Index or list")
-        if path:
+        if local:
+            self.path = ospath + "\\" + path
+        else:
             self.path = path
         if mode:
             self.mode = mode
@@ -619,8 +622,9 @@ class Index:
         return Index(self.tag.lower(), copy.deepcopy(self.val))
 
     @staticmethod
-    def open(path: str):
+    def open(path: str, local=False):
         path = path.replace("/", "\\")
+        path = ospath + "\\" + path if local else path
         if os.path.isfile(path):
             with open(path, "r") as f:
                 mode = "." + path.rsplit(".", 1)[1]
@@ -667,7 +671,7 @@ class Index:
                         s = source[x].split(':', 1)
                         p = Property(tag=s[0], val=s[1].strip() if len(s) == 2 else "")
                         spool += p
-            if spool:
+            if spool is not None:
                 val.append(spool)
             return Index(tag=tag, val=val)
         elif isinstance(source, dict):
@@ -751,10 +755,10 @@ class Index:
 
 
 class Register:
-    path = os.getcwd()
+    ospath = os.getcwd()
     __doc__ = "A register is a qoid whose elements are all indices"
 
-    def __init__(self, tag: str = "", val=None, path=None):
+    def __init__(self, tag: str = "", val=None, path=None, local=False):
         self.tag = str(tag)
         self.val = []
         if val:
@@ -764,7 +768,9 @@ class Register:
                         self.append(e)
             else:
                 raise ValueError(f"Invalid val type {type(val)}, must submit Index or list")
-        if path:
+        if local:
+            self.path = ospath + "\\" + path
+        else:
             self.path = path
 
     def __add__(self, other):
