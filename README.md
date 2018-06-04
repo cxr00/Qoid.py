@@ -38,19 +38,4 @@ tag2: val2
 
 ```
 
-Qoid preserves the JSON standard in cases such as this.
-
-```json
-
-{
-  "Index":[
-    {
-      "Same tag": [["tag1", "tag1"], ["val1", "val2"]]
-    },
-    {
-      "Same tag": [["tag1", "tag1"], ["val1", "val2"]]
-    }
-    ]
-}
-
 ### Lots to do to clean this up
