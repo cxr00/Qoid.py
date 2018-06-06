@@ -7,7 +7,7 @@ import json
 import copy
 
 ospath = os.getcwd()
-
+q_ext = (".cxr", ".meta", ".txt")
 
 class QoidError(KeyError):
     __doc__ = "A QoidError is raised for KeyErrors and KeyError-like problems which occur specifically in qoid.py."
@@ -39,7 +39,7 @@ class Property:
         else:
             return NotImplemented
 
-    def __bool__(self): return self.tag or self.val
+    def __bool__(self): return bool(self.tag) or bool(self.val)
 
     def __bytes__(self):
         return str.encode(format(self))
@@ -59,7 +59,6 @@ class Property:
         return self.tag >= other.tag
 
     def __getitem__(self, item):
-        # return super(BaseQoid, self).__getitem__(item)
         return self.val[item]
 
     def __gt__(self, other):
@@ -104,6 +103,8 @@ class Property:
 
     def set_parent(self, parent):
         if isinstance(parent, Qoid):
+            if self.parent and self in self.parent:
+                self.parent.pop(self)
             self.parent = parent
         else:
             raise TypeError(f"Property.parent must be Qoid, not {type(parent)}")
@@ -112,7 +113,7 @@ class Property:
 class Qoid:
     __doc__ = "A Qoid is a set of Properties. Each Qoid has a tag which functions as a key."
 
-    def __init__(self, tag: str = "Qoid", val=None, parent=None):
+    def __init__(self, tag: str="Qoid", val=None, parent=None):
         self.tag = tag
         self.val = []
         self.parent = parent
@@ -131,6 +132,8 @@ class Qoid:
         out = copy.deepcopy(self)
         out += other
         return out
+
+    def __bool__(self): return bool(self.tag) or bool(self.val)
 
     def __bytes__(self):
         return str.encode(str(self))
@@ -178,6 +181,8 @@ class Qoid:
             return self.get(index=item).val
         elif isinstance(item, str):
             return self.get(tag=item).val
+        elif isinstance(item, tuple):
+            return self.get(tag=item[0]).val
         else:
             raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
@@ -251,7 +256,7 @@ class Qoid:
         out = copy.deepcopy(self)
         if isinstance(subtra, (int, str, Property)):
             try:
-                out.remove(subtra)
+                out.pop(subtra)
             except QoidError:
                 pass
             return out
@@ -259,12 +264,12 @@ class Qoid:
             for e in subtra:
                 if e.val is None:
                     try:
-                        out.remove(e.tag)
+                        out.pop(e.tag)
                     except QoidError:
                         pass
                 else:
                     try:
-                        out.remove(e)
+                        out.pop(e)
                     except QoidError:
                         pass
             return out
@@ -361,20 +366,15 @@ class Qoid:
     """Pack the contents of this qoid into a json-serialized format"""
     def pack(self): return {self.tag: [self.tags(), self.vals()]}
 
-    def pop(self, index=-1):
-        if index == -1:
-            return self.val.pop()
-        elif len(self) > index >= 0:
-            return self.val.pop(index)
-        else:
-            raise IndexError("Qoid index out of range")
-
     """Remove either the property at the given index, with the given tag, or which matches the property given"""
-    def remove(self, this):
+    def pop(self, this=None):
+        if not this:
+            return self.val.pop()
         if isinstance(this, int):
             if len(self) > this >= 0:
                 return self.val.pop(this)
-            raise IndexError("Qoid index out of range")
+            else:
+                raise IndexError("Qoid index out of range")
         elif isinstance(this, str):
             for e in self:
                 if e.tag == this:
@@ -411,6 +411,8 @@ class Qoid:
 
     def set_parent(self, parent):
         if isinstance(parent, Index):
+            if self.parent and self in self.parent:
+                self.parent.pop(self)
             self.parent = parent
         else:
             raise TypeError(f"Qoid.parent must be Index, not {type(parent)}")
@@ -447,7 +449,7 @@ class Index:
         out += other
         return out
 
-    def __bool__(self): return self.tag or self.val
+    def __bool__(self): return bool(self.tag) or bool(self.val)
 
     def __bytes__(self):
         return str.encode(str(self))
@@ -495,6 +497,11 @@ class Index:
             return self.get(index=item)
         elif isinstance(item, str):
             return self.get(tag=item)
+        elif isinstance(item, tuple):
+            if len(item) > 1:
+                return self.get(tag=item[0])[item[1]]
+            else:
+                return self.get(tag=item[0])
         else:
             raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
@@ -568,7 +575,7 @@ class Index:
         out = copy.deepcopy(self)
         if isinstance(subtra, (int, str, Qoid)):
             try:
-                out.remove(subtra)
+                out.pop(subtra)
             except QoidError:
                 pass
             return out
@@ -576,12 +583,12 @@ class Index:
             for e in subtra:
                 if e.val is None:
                     try:
-                        out.remove(e.tag)
+                        out.pop(e.tag)
                     except QoidError:
                         pass
                 else:
                     try:
-                        out.remove(e)
+                        out.pop(e)
                     except QoidError:
                         pass
             return out
@@ -638,7 +645,7 @@ class Index:
             raise NoParentError("No parent exists for this Index")
 
     def glossary(self):
-        out = Qoid(f"Glossary: {self.tag}")
+        out = Qoid(self.tag)
         for e in self:
             out += Property(e.tag)
         return out
@@ -692,12 +699,21 @@ class Index:
     def pack(self):
         return {q.tag: [q.tags(), q.vals()] for q in self}
 
+    def path_priority(self):
+        if self.path:
+            return self.path
+        elif self.source:
+            return self.source
+        else:
+            return self.tag + (".cxr" if not self.tag.endswith(q_ext) else "")
+
     def create_path(self):
+        p = self.path_priority()
         if self.parent:
             out = self.parent.create_path()
-            return os.path.join(out, self.tag)
+            return os.path.join(out, p)
         else:
-            return self.tag
+            return p
 
     @staticmethod
     def parse(source, tag: str):
@@ -738,10 +754,10 @@ class Index:
                         # Step 3: ensure all elements are stringsytz
                         for e in t:
                             if not isinstance(e, str):
-                                raise QoidParseError("Invalid JSCON format: tags contain non-string")
+                                raise QoidParseError("Invalid JSON format: tags contain non-string")
                         for e in v:
                             if not isinstance(e, str):
-                                raise QoidParseError("Invalid JSCON format: vals contain non-string")
+                                raise QoidParseError("Invalid JSON format: vals contain non-string")
                         # Step 4: create qoid
                         properties = []
                         for k in range(len(t)):
@@ -749,27 +765,22 @@ class Index:
                         q = Qoid(key, val=properties)
                         qoids.append(q)
                     else:
-                        raise QoidParseError("Invalid JSCON format: value is not tag-value lists")
+                        raise QoidParseError("Invalid JSON format: value is not tag-value lists")
                 else:
-                    raise QoidParseError("Invalid JSCON format: json item is not a tag-value pair")
+                    raise QoidParseError("Invalid JSON format: json item is not a tag-value pair")
             return Index(tag=tag, val=qoids)
         else:
             raise TypeError(f"Illegal source of type {type(source)}: must be list or dict")
 
-    def pop(self, index=-1):
-        if index == -1:
-            return self.val.pop()
-        elif len(self) > index >= 0:
-            return self.val.pop(index)
-        else:
-            raise IndexError("Qoid index out of range")
-
     """Remove either the Qoid at the given index, with the given tag, or which matches the property given"""
-    def remove(self, this):
+    def pop(self, this=None):
+        if not this:
+            return self.val.pop()
         if isinstance(this, int):
             if len(self) > this >= 0:
                 return self.val.pop(this)
-            raise IndexError("Qoid index out of range")
+            else:
+                raise IndexError("Qoid index out of range")
         elif isinstance(this, str):
             for e in self:
                 if e.tag == this:
@@ -779,7 +790,7 @@ class Index:
             for e in self:
                 if e == this:
                     return self.val.pop(self.val.index(e))
-            raise QoidError("'{this.tag}: {len(this)} item(s)'")
+            raise QoidError(f"'{this.tag}: {len(this)} item(s)'")
         else:
             raise TypeError(f"Unsupported type {type(this)}, must be int, str, or Property")
 
@@ -800,6 +811,8 @@ class Index:
 
     def set_parent(self, parent):
         if isinstance(parent, Register):
+            if self.parent and self in self.parent:
+                self.parent.pop(self)
             self.parent = parent
         else:
             raise TypeError(f"Index.parent must be Register, not {type(parent)}")
@@ -884,6 +897,8 @@ class Register:
             return self.get(index=item)
         elif isinstance(item, str):
             return self.get(tag=item)
+        elif isinstance(item, tuple):
+            return self.get(item[0])[item[1:]]
         else:
             raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
@@ -957,7 +972,7 @@ class Register:
         out = copy.deepcopy(self)
         if isinstance(subtra, (int, str, Index)):
             try:
-                out.remove(subtra)
+                out.pop(subtra)
             except QoidError:
                 pass
             return out
@@ -965,12 +980,12 @@ class Register:
             for e in subtra:
                 if e.val is None:
                     try:
-                        out.remove(e.tag)
+                        out.pop(e.tag)
                     except QoidError:
                         pass
                 else:
                     try:
-                        out.remove(e)
+                        out.pop(e)
                     except QoidError:
                         pass
             return out
@@ -1008,16 +1023,21 @@ class Register:
             c += 1 if e.tag == val else 0
         return c
 
-    def create_path(self):
-        if self.parent:
-            out = self.parent.create_path()
-            return os.path.join(out, self.tag)
-        elif self.path:
+    def path_priority(self):
+        if self.path:
             return self.path
         elif self.source:
             return self.source
         else:
-            return self.tag
+            return self.tag + (".cxr" if not self.tag.endswith(q_ext) else "")
+
+    def create_path(self):
+        p = self.path_priority()
+        if self.parent:
+            out = self.parent.create_path()
+            return os.path.join(out, p)
+        else:
+            return p
 
     def extend(self, val):
         for e in self:
@@ -1058,7 +1078,7 @@ class Register:
             raise NoParentError("No parent exists for this Register")
 
     def glossary(self):
-        out = Register(f"Glossary: {self.tag}")
+        out = Register(self.tag)
         for e in self:
             out += e.glossary()
         return out
@@ -1112,19 +1132,14 @@ class Register:
         else:
             raise NotADirectoryError(f"Invalid source specified: {path}")
 
-    def pop(self, index=-1):
-        if index == -1:
+    def pop(self, this=None):
+        if not this:
             return self.val.pop()
-        elif len(self) > index >= 0:
-            return self.val.pop(index)
-        else:
-            raise IndexError("Qoid index out of range")
-
-    def remove(self, this):
         if isinstance(this, int):
             if len(self) > this >= 0:
                 return self.val.pop(this)
-            raise IndexError("Qoid index out of range")
+            else:
+                raise IndexError("Qoid index out of range")
         elif isinstance(this, str):
             for e in self:
                 if e.tag == this:
@@ -1134,7 +1149,7 @@ class Register:
             for e in self:
                 if e == this:
                     return self.val.pop(self.val.index(e))
-            raise QoidError("'{this.tag}: {len(this)} item(s)'")
+            raise QoidError(f"'{this.tag}: {len(this)} item(s) not found in {self.tag}'")
         else:
             raise TypeError(f"Unsupported type {type(this)}, must be int, str, Register, or Index")
 
@@ -1156,13 +1171,11 @@ class Register:
             e.save(echo=echo_all)
         if echo:
             print(f"Register {self.tag} saved to {self.create_path()}")
-        # for e in self:
-        #     e.save(echo=echo)
-        # if echo:
-        #     print(f"Register {self.tag} saved to {self.path}")
 
     def set_parent(self, parent):
         if isinstance(parent, Register):
+            if self.parent and self in self.parent:
+                self.parent.pop(self)
             self.parent = parent
         else:
             raise TypeError(f"Register.parent must be Register, not {type(parent)}")
