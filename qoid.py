@@ -6,23 +6,32 @@ import os
 import json
 import copy
 
-
 ospath = os.getcwd()
+
 
 class QoidError(KeyError):
     __doc__ = "A QoidError is raised for KeyErrors and KeyError-like problems which occur specifically in qoid.py."
 
 
+class NoParentError(TypeError):
+    __doc__ = "A NoParentError is raised when attempting parent-requiring functions on Qoids where none exist"
+
+
+class NoPathError(ValueError):
+    __doc__ = "A NoSourcePathError is raised when attempting to save anything without a source, root, or target file path"
+
+
 class QoidParseError(SyntaxError):
-    __doc__ = "A QoidParseError is raised for any SyntaxError involving the parsing of a file using Co-oid markup."
+    __doc__ = "A QoidParseError is raised for any SyntaxError involving the parsing of a file using Qoid markup."
 
 
 class Property:
     __doc__ = "A Property is a tag-value pair, where the tag is used to refer to the value given"
 
-    def __init__(self, tag: str, val=None):
+    def __init__(self, tag: str ="Property", val=None, parent=None):
         self.tag = str(tag)
         self.val = val
+        self.parent = parent
 
     def __add__(self, other):
         if isinstance(other, Property):
@@ -50,6 +59,7 @@ class Property:
         return self.tag >= other.tag
 
     def __getitem__(self, item):
+        # return super(BaseQoid, self).__getitem__(item)
         return self.val[item]
 
     def __gt__(self, other):
@@ -76,6 +86,12 @@ class Property:
     def __str__(self):
         return format(self)
 
+    def get_parent(self):
+        if self.parent:
+            return self.parent
+        else:
+            raise NoParentError("No parent exists for this Property")
+
     def lower(self):
         return Property(self.tag.lower(), copy.deepcopy(self.val))
 
@@ -86,18 +102,25 @@ class Property:
         if val:
             self.val = val
 
+    def set_parent(self, parent):
+        if isinstance(parent, Qoid):
+            self.parent = parent
+        else:
+            raise TypeError(f"Property.parent must be Qoid, not {type(parent)}")
+
 
 class Qoid:
     __doc__ = "A Qoid is a set of Properties. Each Qoid has a tag which functions as a key."
 
-    def __init__(self, tag: str = "", val=None):
-        self.tag = str(tag)
+    def __init__(self, tag: str = "Qoid", val=None, parent=None):
+        self.tag = tag
         self.val = []
+        self.parent = parent
         if val:
             if isinstance(val, (Qoid, list)):
                 for e in val:
                     if isinstance(e, Property):
-                        self.append(e)
+                        self.val.append(copy.deepcopy(e))
                     else:
                         err = [val.index(e), type(e)]
                         raise TypeError(f"Invalid element val[{err[0]}] of type {err[1]}: must contain only Property")
@@ -108,8 +131,6 @@ class Qoid:
         out = copy.deepcopy(self)
         out += other
         return out
-
-    def __bool__(self): return self.tag or self.val
 
     def __bytes__(self):
         return str.encode(str(self))
@@ -169,7 +190,7 @@ class Qoid:
     def __iadd__(self, other):
         if isinstance(other, Property):
             out = copy.deepcopy(self)
-            out.append(copy.deepcopy(other))
+            out.append(other)
             return out
         elif isinstance(other, Qoid):
             out = copy.deepcopy(self)
@@ -254,7 +275,9 @@ class Qoid:
         return format(self)
 
     def append(self, item: Property):
-        self.val.append(item)
+        to_add = copy.deepcopy(item)
+        to_add.set_parent(self)
+        self.val.append(to_add)
 
     def count(self, val):
         c = 0
@@ -289,6 +312,12 @@ class Qoid:
             if len(self) > index >= 0:
                 return self.val[index]
             raise IndexError(f"Qoid index {index} out of range")
+
+    def get_parent(self):
+        if self.parent:
+            return self.parent
+        else:
+            raise NoParentError("No parent exists for this Qoid")
 
     def all_of(self, tag: str):
         if tag:
@@ -380,6 +409,12 @@ class Qoid:
                 return
             raise IndexError("Qoid index out of range")
 
+    def set_parent(self, parent):
+        if isinstance(parent, Index):
+            self.parent = parent
+        else:
+            raise TypeError(f"Qoid.parent must be Index, not {type(parent)}")
+
     def sort(self, ignore_case=True):
         self.val = sorted(self.val, key=Qoid.lower if ignore_case else None)
 
@@ -391,12 +426,14 @@ class Qoid:
 
 
 class Index:
-    mode = ".cxr"
     __doc__ = "An Index is a Qoid whose elements are Qoids"
 
-    def __init__(self, tag: str, val=None, path=None, mode=None, local=False):
+    def __init__(self, tag: str = "Index", val=None, source=None, path=None, parent=None):
         self.tag = str(tag)
         self.val = []
+        self.source = source
+        self.path = path
+        self.parent = parent
         if val:
             if isinstance(val, (Index, list)):
                 for e in val:
@@ -404,12 +441,6 @@ class Index:
                         self.append(e)
             else:
                 raise ValueError(f"Invalid val type {type(val)}, must submit Index or list")
-        if local:
-            self.path = ospath + "\\" + path
-        else:
-            self.path = path
-        if mode:
-            self.mode = mode
 
     def __add__(self, other):
         out = copy.deepcopy(self)
@@ -476,7 +507,7 @@ class Index:
     def __iadd__(self, other):
         if isinstance(other, Qoid):
             out = copy.deepcopy(self)
-            out.append(copy.deepcopy(other))
+            out.append(other)
             return out
         elif isinstance(other, Index):
             out = copy.deepcopy(self)
@@ -561,7 +592,9 @@ class Index:
         return format(self)
 
     def append(self, item: Qoid):
-        self.val.append(item)
+        to_add = copy.deepcopy(item)
+        self.val.append(to_add)
+        to_add.set_parent(self)
 
     def count(self, val):
         c = 0
@@ -598,6 +631,18 @@ class Index:
                 return self.val[index]
             raise IndexError("Qoid index out of range")
 
+    def get_parent(self):
+        if self.parent:
+            return self.parent
+        else:
+            raise NoParentError("No parent exists for this Index")
+
+    def glossary(self):
+        out = Qoid(f"Glossary: {self.tag}")
+        for e in self:
+            out += Property(e.tag)
+        return out
+
     """Get the first index of a property with the given tag"""
     def index(self, item):
         if isinstance(item, Qoid):
@@ -628,30 +673,31 @@ class Index:
         return Index(self.tag.lower(), copy.deepcopy(self.val))
 
     @staticmethod
-    def open(path: str, local=False):
-        path = path.replace("/", "\\")
-        path = ospath + "\\" + path if local else path
-        if os.path.isfile(path):
-            with open(path, "r") as f:
-                mode = "." + path.rsplit(".", 1)[1]
-                if mode == ".cxr" or mode == ".txt":
-                    mode = ".cxr"
-                    source = [l.replace("\n", "") for l in f.readlines()]
-                elif mode == ".json":
-                    source = json.load(fp=f)
+    def open(source: str):
+        source = source.replace("/", "\\")
+        if os.path.isfile(source):
+            with open(source, "r") as f:
+                if source.endswith(".json"):
+                    content = json.load(fp=f)
                 else:
-                    raise QoidError("incompatible file type; must be cxr, txt, or json")
-                tag = path.split("\\")[-1].rsplit(".", 1)[0]
-                out = Index.parse(source, tag=tag)
-                out.mode = mode
-                out.path = path
+                    content = [l.replace("\n", "") for l in f.readlines()]
+                tag = source.split("\\")[-1]
+                out = Index.parse(content, tag=tag)
+                out.source = source
                 return out
         else:
-            raise FileNotFoundError(f"Invalid source specified: {path}")
+            raise FileNotFoundError(f"Invalid source specified: {source}")
 
     """Pack the contents of this index into a json-serialized format"""
     def pack(self):
         return {q.tag: [q.tags(), q.vals()] for q in self}
+
+    def create_path(self):
+        if self.parent:
+            out = self.parent.create_path()
+            return os.path.join(out, self.tag)
+        else:
+            return self.tag
 
     @staticmethod
     def parse(source, tag: str):
@@ -743,14 +789,20 @@ class Index:
     def sort(self, ignore_case=True):
         self.val = sorted(self.val, key=Index.lower if ignore_case else None)
 
-    def save(self, echo=False):
-        with open(self.path, 'w') as out:
-            if self.mode == ".cxr":
-                out.write(format(self))
-            else:
+    def save(self, echo=False, is_json=False):
+        with open(self.create_path() + (".json" if is_json else ""), 'w+') as out:
+            if is_json:
                 json.dump(obj=self.pack(), fp=out)
+            else:
+                out.write(format(self))
         if echo:
-            print(f"{self.tag} saved to {self.path}")
+            print(f"Index {self.tag} saved to {self.create_path()}")
+
+    def set_parent(self, parent):
+        if isinstance(parent, Register):
+            self.parent = parent
+        else:
+            raise TypeError(f"Index.parent must be Register, not {type(parent)}")
 
     """Get the set of all tags in this index"""
     def tags(self):
@@ -764,9 +816,12 @@ class Register:
     ospath = os.getcwd()
     __doc__ = "A register is a qoid whose elements are all indices"
 
-    def __init__(self, tag: str = "", val=None, path=None, local=False):
+    def __init__(self, tag: str = "Register", val=None, source=None, path=None, parent=None):
         self.tag = str(tag)
         self.val = []
+        self.source = source
+        self.path = path
+        self.parent = parent
         if val:
             if isinstance(val, (Register, list)):
                 for e in val:
@@ -774,17 +829,13 @@ class Register:
                         self.append(e)
             else:
                 raise ValueError(f"Invalid val type {type(val)}, must submit Index or list")
-        if local:
-            self.path = ospath + "\\" + path
-        else:
-            self.path = path
 
     def __add__(self, other):
         out = copy.deepcopy(self)
         out += other
         return out
 
-    def __bool__(self): return self.tag or self.val
+    def __bool__(self): return bool(self.tag) or bool(self.val)
 
     def __bytes__(self):
         return str.encode(format(self))
@@ -843,14 +894,13 @@ class Register:
         return hash(str(self))
 
     def __iadd__(self, other):
-        if isinstance(other, Index):
+        if isinstance(other, (Index, Register)):
             out = copy.deepcopy(self)
-            out.append(copy.deepcopy(other))
+            out.append(other)
             return out
-        elif isinstance(other, Register):
+        elif isinstance(other, Qoid):
             out = copy.deepcopy(self)
-            for e in other:
-                out.append(e)
+            out.get_meta().append(other)
             return out
         else:
             raise ValueError(f"Incompatible operands {type(self)} and {type(other)}")
@@ -932,13 +982,42 @@ class Register:
 
     def append(self, item):
         if isinstance(item, (Register, Index)):
-            self.val.append(item)
+            to_add = copy.deepcopy(item)
+            to_add.set_parent(self)
+            self.val.append(to_add)
+        else:
+            raise ValueError()
+
+    def broadcast(self, key: str):
+        out = self.clone()
+        var_set = out.get_meta()[key]
+        for element in out:
+            for qoid in (element.get_meta() if isinstance(element, Register) else element):
+                for line in qoid:
+                    for var in var_set:
+                        if f"@{var.tag}@" in line.val:
+                            line.val = line.val.replace(f"@{var.tag}@", var.val)
+        return out
+
+    def clone(self):
+        return copy.deepcopy(self)
 
     def count(self, val):
         c = 0
         for e in self:
             c += 1 if e.tag == val else 0
         return c
+
+    def create_path(self):
+        if self.parent:
+            out = self.parent.create_path()
+            return os.path.join(out, self.tag)
+        elif self.path:
+            return self.path
+        elif self.source:
+            return self.source
+        else:
+            return self.tag
 
     def extend(self, val):
         for e in self:
@@ -964,6 +1043,25 @@ class Register:
             if len(self) > index >= 0:
                 return self.val[index]
             raise IndexError("Qoid index out of range")
+
+    def get_meta(self):
+        if ".meta" in self:
+            return self[".meta"]
+        else:
+            self.append(Index(tag=".meta", parent=self))
+            return self[".meta"]
+
+    def get_parent(self):
+        if self.parent:
+            return self.parent
+        else:
+            raise NoParentError("No parent exists for this Register")
+
+    def glossary(self):
+        out = Register(f"Glossary: {self.tag}")
+        for e in self:
+            out += e.glossary()
+        return out
 
     def index(self, item):
         if isinstance(item, (Register, Index)):
@@ -1001,10 +1099,15 @@ class Register:
             out.path = path.rsplit("\\", 1)[0]
             for e in os.listdir(path):
                 try:
-                    i = Index.open(path + "\\" + e)
+                    if os.path.isdir(os.path.join(path, e)) and e.endswith(".cxr"):
+                        i = Register.open(os.path.join(path, e))
+                    elif e.endswith((".cxr", ".meta", ".txt")):
+                        i = Index.open(os.path.join(path, e))
+                    else:
+                        raise QoidError("Invalid file type")
                     out += i
-                except QoidError as qe:
-                    print(f"Ignoring non-qoid at {path}\\{e}")
+                except QoidError:
+                    print(f"Ignoring invalid file type at {os.path.join(path, e)}")
             return out
         else:
             raise NotADirectoryError(f"Invalid source specified: {path}")
@@ -1041,11 +1144,28 @@ class Register:
     def sort(self, ignore_case=True):
         self.val = sorted(self.val, key=Register.lower if ignore_case else None)
 
-    def save(self, echo=False):
+    def save(self, echo=False, echo_all=False):
+        p = self.create_path()
+        if not os.path.isdir(p):
+            os.mkdir(p)
         for e in self:
-            e.save(echo=echo)
+            if isinstance(e, Register):
+                p = e.create_path()
+                if not os.path.isdir(p):
+                    os.mkdir(p)
+            e.save(echo=echo_all)
         if echo:
-            print(f"Register {self.tag} saved to {self.path}")
+            print(f"Register {self.tag} saved to {self.create_path()}")
+        # for e in self:
+        #     e.save(echo=echo)
+        # if echo:
+        #     print(f"Register {self.tag} saved to {self.path}")
+
+    def set_parent(self, parent):
+        if isinstance(parent, Register):
+            self.parent = parent
+        else:
+            raise TypeError(f"Register.parent must be Register, not {type(parent)}")
 
     def tags(self):
         return [e.tag for e in self]
