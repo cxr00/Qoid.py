@@ -1,0 +1,27 @@
+#qoid 1
+p1: foo
+p3: baz lehrman
+
+#qoid 2
+p2: bar
+
+#qoid 1
+p1: foo
+p3: baz lehrman
+
+
+{'qoid 1': [['p1', 'p3'], ['foo', 'baz lehrman']], 'qoid 2': [['p2'], ['bar']]}
+
+#qoid 1
+p1: foo
+p3: baz lehrman
+
+#qoid 2
+p2: bar
+
+
+Index index saved to index.cxr
+Index index saved to index.cxr
+Index index saved to output.cxr
+
+Process finished with exit code 0
