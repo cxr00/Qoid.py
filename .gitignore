@@ -100,12 +100,3 @@ ENV/
 
 # JetBrains project settings
 .idea
-
-# test environment
-_test.py
-_old.py
-testery
-blerfk
-baseqoid_test.py
-mdat
-qoid_test*.py
