@@ -6,8 +6,10 @@ import os
 import json
 import copy
 
-ospath = os.getcwd()
-q_ext = (".cxr", ".meta", ".txt")
+# Permitted file and directory extensions to read as Qoid
+q_fext = (".cxr", ".meta", ".txt")
+q_dirext = tuple(".cxr")
+
 
 class QoidError(KeyError):
     __doc__ = "A QoidError is raised for KeyErrors and KeyError-like problems which occur specifically in qoid.py."
@@ -163,7 +165,7 @@ class Qoid:
         return False
 
     def __format__(self, format_spec):
-        out = f"#{self.tag}\n"
+        out = f"#{self.tag}\n" if len(self.tag) else ""
         for e in self:
             out += format(e, format_spec) + "\n"
         return out
@@ -178,7 +180,7 @@ class Qoid:
             step = item.step if item.step else 1
             return [self.val[i].val for i in range(start, stop, step)]
         elif isinstance(item, int):
-            return self.get(index=item).val
+            return self.get(n=item).val
         elif isinstance(item, str):
             return self.get(tag=item).val
         elif isinstance(item, tuple):
@@ -202,8 +204,42 @@ class Qoid:
             for e in other:
                 out.append(e)
             return out
+        elif isinstance(other, list):
+            out = copy.deepcopy(self)
+            for e in other:
+                out += e
+            return out
         else:
             raise ValueError(f"Incompatible operands {type(self)} and {type(other)}")
+
+    def __isub__(self, subtra):
+        out = copy.deepcopy(self)
+        if isinstance(subtra, (int, str, Property)):
+            try:
+                out.pop(subtra)
+            except QoidError:
+                pass
+            return out
+        elif isinstance(subtra, Qoid):
+            for e in subtra:
+                if e.val is None:
+                    try:
+                        out.pop(e.tag)
+                    except QoidError:
+                        pass
+                else:
+                    try:
+                        out.pop(e)
+                    except QoidError:
+                        pass
+            return out
+        elif isinstance(subtra, list):
+            out = copy.deepcopy(self)
+            for e in subtra:
+                out -= e
+            return out
+        else:
+            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Qoid.__isub__(self, subtra)")
 
     def __iter__(self):
         return iter(self.val)
@@ -252,29 +288,10 @@ class Qoid:
         else:
             raise TypeError(f"Unsupported type {type(key)} for key in Qoid.__setitem__(self, key, value)")
 
-    def __sub__(self, subtra):
+    def __sub__(self, other):
         out = copy.deepcopy(self)
-        if isinstance(subtra, (int, str, Property)):
-            try:
-                out.pop(subtra)
-            except QoidError:
-                pass
-            return out
-        elif isinstance(subtra, Qoid):
-            for e in subtra:
-                if e.val is None:
-                    try:
-                        out.pop(e.tag)
-                    except QoidError:
-                        pass
-                else:
-                    try:
-                        out.pop(e)
-                    except QoidError:
-                        pass
-            return out
-        else:
-            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Qoid.__sub__(self, subtra)")
+        out -= other
+        return out
 
     def __str__(self):
         return format(self)
@@ -296,27 +313,27 @@ class Qoid:
                 raise TypeError(f"Unsupported {type(e)} in iterable, only Property is allowed")
         self.val.extend(val)
 
-    def find(self, tag: str):
-        for e in self:
-            if e.tag == tag:
-                return e
-        raise QoidError(f"'{tag}'")
-
     """
     Get the first property which matches the given tag, or the property at the given index.
     If no argument is specified, returns all contents.
     """
-    def get(self, tag=None, index=-1):
+    def get(self, tag=None, n=-1):
         if tag:
             tag = str(tag)
+            out = Qoid("")
             for e in self:
                 if e.tag == tag:
-                    return e
-            raise QoidError(f"'{tag}'")
+                    out.append(e)
+            if len(out) > 1:
+                return out
+            elif len(out) == 1:
+                return out.get(n=0)
+            else:
+                raise QoidError(f"'{tag}'")
         else:
-            if len(self) > index >= 0:
-                return self.val[index]
-            raise IndexError(f"Qoid index {index} out of range")
+            if len(self) > n >= 0:
+                return self.val[n]
+            raise IndexError("Qoid index out of range")
 
     def get_parent(self):
         if self.parent:
@@ -363,6 +380,13 @@ class Qoid:
     def lower(self):
         return Qoid(self.tag.lower(), copy.deepcopy(self.val))
 
+    def only(self, *items):
+        out = []
+        for each in items:
+            if each in self:
+                out.append(each)
+        return Qoid(tag=self.tag, val=out)
+
     """Pack the contents of this qoid into a json-serialized format"""
     def pack(self): return {self.tag: [self.tags(), self.vals()]}
 
@@ -370,7 +394,7 @@ class Qoid:
     def pop(self, this=None):
         if not this:
             return self.val.pop()
-        if isinstance(this, int):
+        elif isinstance(this, int):
             if len(self) > this >= 0:
                 return self.val.pop(this)
             else:
@@ -422,6 +446,17 @@ class Qoid:
 
     """Get the set of all tags in this qoid"""
     def tags(self): return [e.tag for e in self]
+
+    def without(self, *items):
+        out = copy.deepcopy(self)
+        for each in items:
+            try:
+                out.pop(each)
+            except QoidError:
+                # TODO
+                # print(qe)
+                pass
+        return out
 
     """Get the set of all values in this qoid"""
     def vals(self): return [e.val if e.val else "" for e in self]
@@ -494,7 +529,7 @@ class Index:
             step = item.step if item.step else 1
             return [self.val[i] for i in range(start, stop, step)]
         elif isinstance(item, int):
-            return self.get(index=item)
+            return self.get(n=item)
         elif isinstance(item, str):
             return self.get(tag=item)
         elif isinstance(item, tuple):
@@ -521,8 +556,42 @@ class Index:
             for e in other:
                 out.append(e)
             return out
+        elif isinstance(other, list):
+            out = copy.deepcopy(self)
+            for e in other:
+                out += e
+            return out
         else:
             raise ValueError(f"Incompatible operands {type(self)} and {type(other)}")
+
+    def __isub__(self, subtra):
+        out = copy.deepcopy(self)
+        if isinstance(subtra, (int, str, Qoid)):
+            try:
+                out.pop(subtra)
+            except QoidError:
+                pass
+            return out
+        elif isinstance(subtra, Index):
+            for e in subtra:
+                if e.val is None:
+                    try:
+                        out.pop(e.tag)
+                    except QoidError:
+                        pass
+                else:
+                    try:
+                        out.pop(e)
+                    except QoidError:
+                        pass
+            return out
+        elif isinstance(subtra, list):
+            out = copy.deepcopy(self)
+            for e in subtra:
+                out -= e
+            return out
+        else:
+            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Index.__isub__(self, subtra)")
 
     def __iter__(self):
         return iter(self.val)
@@ -571,29 +640,10 @@ class Index:
         else:
             raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value)")
 
-    def __sub__(self, subtra):
+    def __sub__(self, other):
         out = copy.deepcopy(self)
-        if isinstance(subtra, (int, str, Qoid)):
-            try:
-                out.pop(subtra)
-            except QoidError:
-                pass
-            return out
-        elif isinstance(subtra, Index):
-            for e in subtra:
-                if e.val is None:
-                    try:
-                        out.pop(e.tag)
-                    except QoidError:
-                        pass
-                else:
-                    try:
-                        out.pop(e)
-                    except QoidError:
-                        pass
-            return out
-        else:
-            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Index.__sub__(self, subtra)")
+        out -= other
+        return out
 
     def __str__(self):
         return format(self)
@@ -615,27 +665,27 @@ class Index:
                 raise TypeError(f"Unsupported {type(e)} in iterable, only Property is allowed")
         self.val.extend(val)
 
-    def find(self, tag: str):
-        for e in self:
-            if e.tag == tag:
-                return e
-        raise QoidError(f"'{tag}'")
-
     """
     Get the first Qoid which matches the given tag, or the property at the given index.
     If no argument is specified, returns all contents.
     """
 
-    def get(self, tag=None, index=-1):
+    def get(self, tag=None, n=-1):
         if tag:
             tag = str(tag)
+            out = Index("")
             for e in self:
                 if e.tag == tag:
-                    return e
-            raise QoidError(f"'{tag}'")
+                    out.append(e)
+            if len(out) > 1:
+                return out
+            elif len(out) == 1:
+                return out[0]
+            else:
+                raise QoidError(f"'{tag}'")
         else:
-            if len(self) > index >= 0:
-                return self.val[index]
+            if len(self) > n >= 0:
+                return self.val[n]
             raise IndexError("Qoid index out of range")
 
     def get_parent(self):
@@ -679,6 +729,13 @@ class Index:
     def lower(self):
         return Index(self.tag.lower(), copy.deepcopy(self.val))
 
+    def only(self, *items):
+        out = []
+        for each in items:
+            if each in self:
+                out.append(each)
+        return Index(tag=self.tag, val=out)
+
     @staticmethod
     def open(source: str):
         source = source.replace("/", "\\")
@@ -705,7 +762,7 @@ class Index:
         elif self.source:
             return self.source
         else:
-            return self.tag + (".cxr" if not self.tag.endswith(q_ext) else "")
+            return self.tag + (".cxr" if not self.tag.endswith(q_fext) else "")
 
     def create_path(self):
         p = self.path_priority()
@@ -716,7 +773,7 @@ class Index:
             return p
 
     @staticmethod
-    def parse(source, tag: str):
+    def parse(source, tag: str = "Parsed Index"):
         if isinstance(source, list):
             spool = None
             state = 0
@@ -776,7 +833,7 @@ class Index:
     def pop(self, this=None):
         if not this:
             return self.val.pop()
-        if isinstance(this, int):
+        elif isinstance(this, int):
             if len(self) > this >= 0:
                 return self.val.pop(this)
             else:
@@ -821,12 +878,22 @@ class Index:
     def tags(self):
         return [e.tag for e in self]
 
+    def without(self, *items):
+        out = copy.deepcopy(self)
+        for each in items:
+            try:
+                out.pop(each)
+            except QoidError:
+                # TODO
+                # print(qe)
+                pass
+        return out
+
     def vals(self):
         return [e.val for e in self]
 
 
 class Register:
-    ospath = os.getcwd()
     __doc__ = "A register is a qoid whose elements are all indices"
 
     def __init__(self, tag: str = "Register", val=None, source=None, path=None, parent=None):
@@ -894,7 +961,7 @@ class Register:
             step = item.step if item.step else 1
             return [self.val[i] for i in range(start, stop, step)]
         elif isinstance(item, int):
-            return self.get(index=item)
+            return self.get(n=item)
         elif isinstance(item, str):
             return self.get(tag=item)
         elif isinstance(item, tuple):
@@ -917,8 +984,43 @@ class Register:
             out = copy.deepcopy(self)
             out.get_meta().append(other)
             return out
+        elif isinstance(other, list):
+            out = copy.deepcopy(self)
+            for e in other:
+                out += e
+            return out
         else:
             raise ValueError(f"Incompatible operands {type(self)} and {type(other)}")
+
+    """Subtraction removes the subtrahend from the minuend if it exists"""
+    def __isub__(self, subtra):
+        out = copy.deepcopy(self)
+        if isinstance(subtra, (int, str, Index)):
+            try:
+                out.pop(subtra)
+            except QoidError:
+                pass
+            return out
+        elif isinstance(subtra, Qoid):
+            for e in subtra:
+                if e.val is None:
+                    try:
+                        out.pop(e.tag)
+                    except QoidError:
+                        pass
+                else:
+                    try:
+                        out.pop(e)
+                    except QoidError:
+                        pass
+            return out
+        elif isinstance(subtra, list):
+            out = copy.deepcopy(self)
+            for e in subtra:
+                out -= e
+            return out
+        else:
+            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Qoid.__isub__(self, subtra)")
 
     def __iter__(self):
         return iter(self.val)
@@ -967,30 +1069,10 @@ class Register:
         else:
             raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value)")
 
-    """Subtraction removes the subtrahend from the minuend if it exists"""
-    def __sub__(self, subtra):
+    def __sub__(self, other):
         out = copy.deepcopy(self)
-        if isinstance(subtra, (int, str, Index)):
-            try:
-                out.pop(subtra)
-            except QoidError:
-                pass
-            return out
-        elif isinstance(subtra, Qoid):
-            for e in subtra:
-                if e.val is None:
-                    try:
-                        out.pop(e.tag)
-                    except QoidError:
-                        pass
-                else:
-                    try:
-                        out.pop(e)
-                    except QoidError:
-                        pass
-            return out
-        else:
-            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Qoid.__sub__(self, subtra)")
+        out -= other
+        return out
 
     def __str__(self):
         return format(self)
@@ -1029,7 +1111,7 @@ class Register:
         elif self.source:
             return self.source
         else:
-            return self.tag + (".cxr" if not self.tag.endswith(q_ext) else "")
+            return self.tag + (".cxr" if not self.tag.endswith(q_fext) else "")
 
     def create_path(self):
         p = self.path_priority()
@@ -1045,23 +1127,23 @@ class Register:
                 raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Index is allowed")
         self.val.extend(val)
 
-    def find(self, tag):
-        for e in self:
-            if e.tag == tag:
-                return e
-        raise QoidError(f"'{tag}'")
-
     """Return the value at the given"""
-    def get(self, tag=None, index=-1):
+    def get(self, tag=None, n=-1):
         if tag:
             tag = str(tag)
+            out = Register("")
             for e in self:
                 if e.tag == tag:
-                    return e
-            raise QoidError(f"'{tag}'")
+                    out.append(e)
+            if len(out) > 1:
+                return out
+            elif len(out) == 1:
+                return out[0]
+            else:
+                raise QoidError(f"'{tag}'")
         else:
-            if len(self) > index >= 0:
-                return self.val[index]
+            if len(self) > n >= 0:
+                return self.val[n]
             raise IndexError("Qoid index out of range")
 
     def get_meta(self):
@@ -1111,6 +1193,13 @@ class Register:
     def lower(self):
         return Register(self.tag.lower(), copy.deepcopy(self.val))
 
+    def only(self, *items):
+        out = []
+        for each in items:
+            if each in self:
+                out.append(each)
+        return Register(tag=self.tag, val=out)
+
     @staticmethod
     def open(path: str):
         path = path.replace("/", "\\")
@@ -1119,7 +1208,7 @@ class Register:
             out.path = path.rsplit("\\", 1)[0]
             for e in os.listdir(path):
                 try:
-                    if os.path.isdir(os.path.join(path, e)) and e.endswith(".cxr"):
+                    if os.path.isdir(os.path.join(path, e)) and e.endswith(q_dirext):
                         i = Register.open(os.path.join(path, e))
                     elif e.endswith((".cxr", ".meta", ".txt")):
                         i = Index.open(os.path.join(path, e))
@@ -1132,10 +1221,23 @@ class Register:
         else:
             raise NotADirectoryError(f"Invalid source specified: {path}")
 
+    def pack(self):
+        out = {}
+        reg = []
+        ind = []
+        for e in self:
+            if isinstance(e, Register):
+                reg.append(e)
+            else:
+                ind.append(e)
+        out.update({"Register": {e.tag: e.pack() for e in reg}})
+        out.update({"Index": {e.tag: e.pack() for e in ind}})
+        return {self.tag: [self.tags(), self.vals()]}
+
     def pop(self, this=None):
         if not this:
             return self.val.pop()
-        if isinstance(this, int):
+        elif isinstance(this, int):
             if len(self) > this >= 0:
                 return self.val.pop(this)
             else:
@@ -1182,6 +1284,17 @@ class Register:
 
     def tags(self):
         return [e.tag for e in self]
+
+    def without(self, *items):
+        out = copy.deepcopy(self)
+        for each in items:
+            try:
+                out.pop(each)
+            except QoidError:
+                # TODO
+                # print(qe)
+                pass
+        return out
 
     def vals(self):
         return [e.val for e in self]
