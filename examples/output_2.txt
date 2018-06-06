@@ -1,0 +1,9 @@
+Hello, world!
+This file has been parsed from cxr format.
+Each of these messages is a Property,
+and each Property is inside a Qoid.
+That Qoid also contains a timestamp for the message.
+Each Qoid in this index has a unique numbered tag.
+Take a look at example_2.cxr to see the raw form of Qoid markup!
+
+Process finished with exit code 0

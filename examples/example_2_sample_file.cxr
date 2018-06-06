@@ -1,0 +1,21 @@
+#1
+timestamp: 2018/03/22 12:34 PM
+message: Hello, world!
+
+#2
+timestamp: 2018/03/22 12:35 PM
+message: This file has been parsed from cxr format.
+
+#3
+timestamp: 2018/03/22 12:35 PM
+message: Each of these messages is a Property,
+message: and each Property is inside a Qoid.
+
+#4
+timestamp: 2018/03/22 12:37 PM
+message: That Qoid also contains a timestamp for the message.
+
+#5
+timestamp: 2018/03/22 12:39 PM
+message: Each Qoid in this index has a unique numbered tag.
+message: Take a look at example_2.cxr to see the raw form of Qoid markup!
