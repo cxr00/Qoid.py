@@ -1,7 +1,7 @@
 from qoid import Qoid, Index
 
 # First the file is opened and parsed from cxr format
-i = Index.open("example_2_file.cxr")
+i = Index.open("example_2_sample_file.cxr")
 
 # Create the message Qoid
 q = Qoid("messages")
