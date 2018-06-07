@@ -7,7 +7,7 @@ import json
 import copy
 
 # Permitted file and directory extensions to read as Qoid
-q_fext = (".cxr", ".meta", ".txt")
+q_fext = (".cxr", ".txt")
 q_dirext = tuple(".cxr")
 
 
@@ -103,14 +103,6 @@ class Property:
         if val:
             self.val = val
 
-    def set_parent(self, parent):
-        if isinstance(parent, Qoid):
-            if self.parent and self in self.parent:
-                self.parent.pop(self)
-            self.parent = parent
-        else:
-            raise TypeError(f"Property.parent must be Qoid, not {type(parent)}")
-
 
 class Qoid:
     __doc__ = "A Qoid is a set of Properties. Each Qoid has a tag which functions as a key."
@@ -197,12 +189,12 @@ class Qoid:
     def __iadd__(self, other):
         if isinstance(other, Property):
             out = copy.deepcopy(self)
-            out.append(other)
+            out.append(Property(other.tag, other.val))
             return out
         elif isinstance(other, Qoid):
             out = copy.deepcopy(self)
             for e in other:
-                out.append(e)
+                out.append(Property(e.tag, e.val))
             return out
         elif isinstance(other, list):
             out = copy.deepcopy(self)
@@ -297,8 +289,8 @@ class Qoid:
         return format(self)
 
     def append(self, item: Property):
-        to_add = copy.deepcopy(item)
-        to_add.set_parent(self)
+        to_add = copy.deepcopy(item) if item.parent else item
+        to_add.parent = self
         self.val.append(to_add)
 
     def count(self, val):
@@ -433,19 +425,15 @@ class Qoid:
                 return
             raise IndexError("Qoid index out of range")
 
-    def set_parent(self, parent):
-        if isinstance(parent, Index):
-            if self.parent and self in self.parent:
-                self.parent.pop(self)
-            self.parent = parent
-        else:
-            raise TypeError(f"Qoid.parent must be Index, not {type(parent)}")
-
     def sort(self, ignore_case=True):
         self.val = sorted(self.val, key=Qoid.lower if ignore_case else None)
 
     """Get the set of all tags in this qoid"""
     def tags(self): return [e.tag for e in self]
+
+    def update_parent(self):
+        for e in self:
+            e.parent = self
 
     def without(self, *items):
         out = copy.deepcopy(self)
@@ -465,11 +453,11 @@ class Qoid:
 class Index:
     __doc__ = "An Index is a Qoid whose elements are Qoids"
 
-    def __init__(self, tag: str = "Index", val=None, source=None, path=None, parent=None):
+    def __init__(self, tag: str = "Index", val=None, parent=None):
         self.tag = str(tag)
         self.val = []
-        self.source = source
-        self.path = path
+        self.source = None
+        self.path = None
         self.parent = parent
         if val:
             if isinstance(val, (Index, list)):
@@ -549,12 +537,12 @@ class Index:
     def __iadd__(self, other):
         if isinstance(other, Qoid):
             out = copy.deepcopy(self)
-            out.append(other)
+            out.append(Qoid(other.tag, other.val))
             return out
         elif isinstance(other, Index):
             out = copy.deepcopy(self)
             for e in other:
-                out.append(e)
+                out.append(Qoid(e.tag, e.val))
             return out
         elif isinstance(other, list):
             out = copy.deepcopy(self)
@@ -649,9 +637,9 @@ class Index:
         return format(self)
 
     def append(self, item: Qoid):
-        to_add = copy.deepcopy(item)
+        to_add = copy.deepcopy(item) if item.parent else item
+        to_add.parent = self
         self.val.append(to_add)
-        to_add.set_parent(self)
 
     def count(self, val):
         c = 0
@@ -866,17 +854,14 @@ class Index:
         if echo:
             print(f"Index {self.tag} saved to {self.create_path()}")
 
-    def set_parent(self, parent):
-        if isinstance(parent, Register):
-            if self.parent and self in self.parent:
-                self.parent.pop(self)
-            self.parent = parent
-        else:
-            raise TypeError(f"Index.parent must be Register, not {type(parent)}")
-
     """Get the set of all tags in this index"""
     def tags(self):
         return [e.tag for e in self]
+
+    def update_parent(self):
+        for e in self:
+            e.parent = self
+            e.update_parent()
 
     def without(self, *items):
         out = copy.deepcopy(self)
@@ -896,11 +881,11 @@ class Index:
 class Register:
     __doc__ = "A register is a qoid whose elements are all indices"
 
-    def __init__(self, tag: str = "Register", val=None, source=None, path=None, parent=None):
+    def __init__(self, tag: str = "Register", val=None, parent=None):
         self.tag = str(tag)
         self.val = []
-        self.source = source
-        self.path = path
+        self.source = None
+        self.path = None
         self.parent = parent
         if val:
             if isinstance(val, (Register, list)):
@@ -976,13 +961,13 @@ class Register:
         return hash(str(self))
 
     def __iadd__(self, other):
-        if isinstance(other, (Index, Register)):
+        if isinstance(other, Index):
             out = copy.deepcopy(self)
-            out.append(other)
+            out.append(Index(other.tag, other.val))
             return out
-        elif isinstance(other, Qoid):
+        elif isinstance(other, Register):
             out = copy.deepcopy(self)
-            out.get_meta().append(other)
+            out.append(Register(other.tag, other.val))
             return out
         elif isinstance(other, list):
             out = copy.deepcopy(self)
@@ -1079,25 +1064,11 @@ class Register:
 
     def append(self, item):
         if isinstance(item, (Register, Index)):
-            to_add = copy.deepcopy(item)
-            to_add.set_parent(self)
+            to_add = copy.deepcopy(item) if item.parent else item
+            to_add.parent = self
             self.val.append(to_add)
         else:
-            raise ValueError()
-
-    def broadcast(self, key: str):
-        out = self.clone()
-        var_set = out.get_meta()[key]
-        for element in out:
-            for qoid in (element.get_meta() if isinstance(element, Register) else element):
-                for line in qoid:
-                    for var in var_set:
-                        if f"@{var.tag}@" in line.val:
-                            line.val = line.val.replace(f"@{var.tag}@", var.val)
-        return out
-
-    def clone(self):
-        return copy.deepcopy(self)
+            raise ValueError(f"Can only append Register and Index, not {type(item)}")
 
     def count(self, val):
         c = 0
@@ -1131,7 +1102,7 @@ class Register:
     def get(self, tag=None, n=-1):
         if tag:
             tag = str(tag)
-            out = Register("")
+            out = Register(tag)
             for e in self:
                 if e.tag == tag:
                     out.append(e)
@@ -1145,13 +1116,6 @@ class Register:
             if len(self) > n >= 0:
                 return self.val[n]
             raise IndexError("Qoid index out of range")
-
-    def get_meta(self):
-        if ".meta" in self:
-            return self[".meta"]
-        else:
-            self.append(Index(tag=".meta", parent=self))
-            return self[".meta"]
 
     def get_parent(self):
         if self.parent:
@@ -1210,7 +1174,7 @@ class Register:
                 try:
                     if os.path.isdir(os.path.join(path, e)) and e.endswith(q_dirext):
                         i = Register.open(os.path.join(path, e))
-                    elif e.endswith((".cxr", ".meta", ".txt")):
+                    elif e.endswith(q_fext):
                         i = Index.open(os.path.join(path, e))
                     else:
                         raise QoidError("Invalid file type")
@@ -1270,20 +1234,18 @@ class Register:
                 p = e.create_path()
                 if not os.path.isdir(p):
                     os.mkdir(p)
+            # print(f"{self.tag}\t{e.tag}\t{e.create_path()}")
             e.save(echo=echo_all)
         if echo:
             print(f"Register {self.tag} saved to {self.create_path()}")
 
-    def set_parent(self, parent):
-        if isinstance(parent, Register):
-            if self.parent and self in self.parent:
-                self.parent.pop(self)
-            self.parent = parent
-        else:
-            raise TypeError(f"Register.parent must be Register, not {type(parent)}")
-
     def tags(self):
         return [e.tag for e in self]
+
+    def update_parent(self):
+        for e in self:
+            e.parent = self
+            e.update_parent()
 
     def without(self, *items):
         out = copy.deepcopy(self)
