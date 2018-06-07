@@ -1,0 +1,10 @@
+register.cxr
+register.cxr\register2.cxr
+
+Register register saved to register.cxr
+
+Index index saved to register.cxr\index.cxr
+Register register2 saved to register.cxr\register2.cxr
+Register register saved to register.cxr
+
+Process finished with exit code 0
