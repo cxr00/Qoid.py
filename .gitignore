@@ -100,3 +100,6 @@ ENV/
 
 # JetBrains project settings
 .idea
+
+# custom
+misc

@@ -115,7 +115,7 @@ class Qoid:
             if isinstance(val, (Qoid, list)):
                 for e in val:
                     if isinstance(e, Property):
-                        self.val.append(copy.deepcopy(e))
+                        self.append(e)
                     else:
                         err = [val.index(e), type(e)]
                         raise TypeError(f"Invalid element val[{err[0]}] of type {err[1]}: must contain only Property")
