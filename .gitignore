@@ -103,3 +103,6 @@ ENV/
 
 # custom
 misc
+testery/
+_old.py
+_test.py
