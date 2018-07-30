@@ -84,6 +84,10 @@ class Property:
     def __repr__(self):
         return f"Property({self.tag}, {self.val})"
 
+    def __setitem__(self, key, value):
+        del key
+        self.val = str(value)
+
     def __str__(self):
         return format(self)
 
@@ -312,7 +316,7 @@ class Qoid:
     def get(self, tag=None, n=-1):
         if tag:
             tag = str(tag)
-            out = Qoid("")
+            out = Qoid(self.tag)
             for e in self:
                 if e.tag == tag:
                     out.append(e)
