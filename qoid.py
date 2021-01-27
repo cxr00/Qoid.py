@@ -92,16 +92,27 @@ class Property:
         return format(self)
 
     def get_parent(self):
+        """
+        :return: the parent Qoid
+        """
         if self.parent:
             return self.parent
         else:
             raise NoParentError("No parent exists for this Property")
 
     def lower(self):
+        """
+        :return: the Property with the tag lower case
+        """
         return Property(self.tag.lower(), copy.deepcopy(self.val))
 
-    """Set the property's tag, value, or both"""
     def set(self, tag=None, val=None):
+        """
+        Set the Property's tag, value, or both
+
+        :param tag: the new tag for the Property
+        :param val: the new value for the Property
+        """
         if tag:
             self.tag = tag
         if val:
@@ -293,27 +304,47 @@ class Qoid:
         return format(self)
 
     def append(self, item: Property):
+        """
+        Add a Property to the Qoid
+
+        :param item: the item to add
+        """
         to_add = copy.deepcopy(item) if item.parent else item
         to_add.parent = self
         self.val.append(to_add)
 
-    def count(self, val):
+    def count(self, tag):
+        """
+        Counts the number of times the given tag appears
+
+        :param tag: the tag to count
+        :return: the number of times tag appears
+        """
         c = 0
         for e in self:
-            c += 1 if e.tag == val else 0
+            c += 1 if e.tag == tag else 0
         return c
 
     def extend(self, val: iter):
+        """
+        Add all the properties given
+
+        :param val: the properties to add
+        """
         for e in self:
             if not isinstance(val, Property):
                 raise TypeError(f"Unsupported {type(e)} in iterable, only Property is allowed")
         self.val.extend(val)
 
-    """
-    Get the first property which matches the given tag, or the property at the given index.
-    If no argument is specified, returns all contents.
-    """
     def get(self, tag=None, n=-1):
+        """
+        Get the first Property which matches the given tag, or the property at the given index.
+        If no argument is specified, returns all contents.
+
+        :param tag: the tag to search for
+        :param n: the index to select
+        :return: the first Property with the given tag; at the given index; or the set of Properties
+        """
         if tag:
             tag = str(tag)
             out = Qoid(self.tag)
@@ -326,18 +357,29 @@ class Qoid:
                 return out.get(n=0)
             else:
                 raise QoidError(f"'{tag}'")
+        elif n == -1:
+            return self.val
         else:
             if len(self) > n >= 0:
                 return self.val[n]
             raise IndexError("Qoid index out of range")
 
     def get_parent(self):
+        """
+        :return: the Index in which this Qoid is contained
+        """
         if self.parent:
             return self.parent
         else:
             raise NoParentError("No parent exists for this Qoid")
 
     def all_of(self, tag: str):
+        """
+        Finds all instances of the given tag
+
+        :param tag: the tag to search for
+        :return: a list of all Properties with the given tag
+        """
         if tag:
             out = []
             for e in self:
@@ -347,8 +389,13 @@ class Qoid:
         else:
             raise QoidError(f"{tag}")
 
-    """Get the first index of a property with the given tag"""
     def index(self, item):
+        """
+        Get the first index of a Property with the given tag
+
+        :param item: the Property or tag to search for
+        :return: the first index of the Property or tag
+        """
         if isinstance(item, Property):
             for e in self:
                 if item == e:
@@ -363,6 +410,12 @@ class Qoid:
             raise TypeError(f"Invalid type {type(item)}, must use Property or str")
 
     def insert(self, index, obj):
+        """
+        Add a set of Properties starting from the given index
+
+        :param index: the location in the Qoid to start
+        :param obj: the object to be inserted
+        """
         if isinstance(index, int):
             if isinstance(obj, Property):
                 self.val = self[:index] + [obj] + self[index:]
@@ -374,20 +427,41 @@ class Qoid:
             raise TypeError(f"Unsupported type '{type(obj)}', must be 'int'")
 
     def lower(self):
+        """
+        :return: the Qoid with its tag in lower case
+        """
         return Qoid(self.tag.lower(), copy.deepcopy(self.val))
 
     def only(self, *items):
+        """
+        Find only the given Properties/tags
+
+        :param items: the Properties to be searched for
+        :return: a Qoid with only the properties found
+        """
         out = []
         for each in items:
+            # If each is a Property or str
             if each in self:
                 out.append(each)
         return Qoid(tag=self.tag, val=out)
 
-    """Pack the contents of this qoid into a json-serialized format"""
-    def pack(self): return {self.tag: [self.tags(), self.vals()]}
+    def pack(self):
+        """
+        Pack the contents of this qoid into a json-serialized format
 
-    """Remove either the property at the given index, with the given tag, or which matches the property given"""
+        :return: the json-serialized Qoid
+        """
+        return {self.tag: [self.tags(), self.vals()]}
+
     def pop(self, this=None):
+        """
+        Remove either the property at the given index, with the given tag,
+        or which matches the property given
+
+        :param this: the index, tag, or Property to pop
+        :return: the popped Property
+        """
         if not this:
             return self.val.pop()
         elif isinstance(this, int):
@@ -409,13 +483,20 @@ class Qoid:
             raise TypeError(f"Unsupported type {type(this)}, must be int, str, or Property")
 
     def reverse(self):
+        """
+        Reverse the order of the Properties in the Qoid
+        """
         self.val = reversed(self.val)
 
-    """
-    Get the first property which matches the given tag, or the property at the given index.
-    If no argument is specified, returns all contents.
-    """
     def set(self, tag=None, index=-1, val=None):
+        """
+        Set the first Property which matches the given tag, or at the given index.
+        If no argument is specified, returns all contents.
+
+        :param tag: the tag to be set
+        :param index: the index of the Property to be set
+        :param val: the value of the Property to set
+        """
         if tag:
             tag = str(tag)
             for e in self:
@@ -429,29 +510,31 @@ class Qoid:
                 return
             raise IndexError("Qoid index out of range")
 
-    def sort(self, ignore_case=True):
-        self.val = sorted(self.val, key=Qoid.lower if ignore_case else None)
+    def sort(self):
+        """
+        Sort the Properties in the given Qoid
+        """
+        self.val = sorted(self.val, key=Qoid.lower)
 
-    """Get the set of all tags in this qoid"""
-    def tags(self): return [e.tag for e in self]
+    def tags(self):
+        """
+        Get the set of all tags in this Qoid
+        :return: a list of tags
+        """
+        return [e.tag for e in self]
 
     def update_parent(self):
+        """
+        Ensures all Properties in this Qoid have itself as parent
+        """
         for e in self:
             e.parent = self
 
-    def without(self, *items):
-        out = copy.deepcopy(self)
-        for each in items:
-            try:
-                out.pop(each)
-            except QoidError:
-                # TODO
-                # print(qe)
-                pass
-        return out
-
-    """Get the set of all values in this qoid"""
-    def vals(self): return [e.val if e.val else "" for e in self]
+    def vals(self):
+        """
+        :return: the set of all values in this Qoid
+        """
+        return [e.val if e.val else "" for e in self]
 
 
 class Index:
@@ -738,6 +821,7 @@ class Index:
                 else:
                     content = [l.replace("\n", "") for l in f.readlines()]
                 tag = source.split("\\")[-1]
+                tag = tag.replace(".cxr", "")
                 out = Index.parse(content, tag=tag)
                 out.source = source
                 return out
