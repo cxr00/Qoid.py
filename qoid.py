@@ -478,7 +478,7 @@ class Qoid:
         """
         Sort the Properties in the given Qoid
         """
-        self.val = sorted(self.val, key=Qoid.lower)
+        self.val = sorted(self.val, key=Property.lower)
 
     def tags(self):
         """
@@ -935,7 +935,7 @@ class Index:
         """
         Sort the contents of the Index
         """
-        self.val = sorted(self.val, key=Index.lower)
+        self.val = sorted(self.val, key=Qoid.lower)
 
     def save(self, echo=True, is_json=False):
         """
@@ -1354,12 +1354,6 @@ class Register:
         Reverse the order of the values in the Register
         """
         self.val = reversed(self.val)
-
-    def sort(self):
-        """
-        Sort the values in the Register
-        """
-        self.val = sorted(self.val, key=Register.lower)
 
     def save(self, echo=True):
         """
