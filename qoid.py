@@ -15,10 +15,6 @@ class QoidError(KeyError):
     __doc__ = "A QoidError is raised for KeyErrors and KeyError-like problems which occur specifically in qoid.py."
 
 
-class NoParentError(TypeError):
-    __doc__ = "A NoParentError is raised when attempting parent-requiring functions on Qoids where none exist"
-
-
 class NoPathError(ValueError):
     __doc__ = "A NoSourcePathError is raised when attempting to save anything without a source, root, or target file path"
 
@@ -51,17 +47,11 @@ class Property:
             return self.tag == other.tag and self.val == other.val
         return False
 
-    def __format__(self, format_spec):
-        if format_spec:
-            return self.tag + (f"{format_spec} {self.val}" if self.val else "")
-        else:
-            return self.tag + (f": {self.val}" if self.val else "")
+    def __format__(self, format_spec=None):
+        return self.tag + (f": {self.val}" if self.val else "")
 
     def __ge__(self, other):
         return self.tag >= other.tag
-
-    def __getitem__(self, item):
-        return self.val[item]
 
     def __gt__(self, other):
         return self.tag > other.tag
@@ -84,10 +74,6 @@ class Property:
     def __repr__(self):
         return f"Property({self.tag}, {self.val})"
 
-    def __setitem__(self, key, value):
-        del key
-        self.val = str(value)
-
     def __str__(self):
         return format(self)
 
@@ -95,16 +81,10 @@ class Property:
         """
         :return: the parent Qoid
         """
-        if self.parent:
-            return self.parent
-        else:
-            raise NoParentError("No parent exists for this Property")
+        return self.parent
 
     def lower(self):
-        """
-        :return: the Property with the tag lower case
-        """
-        return Property(self.tag.lower(), copy.deepcopy(self.val))
+        return Property(self.tag.lower(), self.val.lower())
 
     def set(self, tag=None, val=None):
         """
@@ -171,10 +151,10 @@ class Qoid:
             return all(e in other for e in self) and all(e in self for e in other)
         return False
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec=None):
         out = f"#{self.tag}\n" if len(self.tag) else ""
         for e in self:
-            out += format(e, format_spec) + "\n"
+            out += format(e) + "\n"
         return out
 
     def __ge__(self, other):
@@ -369,10 +349,7 @@ class Qoid:
         """
         :return: the Index in which this Qoid is contained
         """
-        if self.parent:
-            return self.parent
-        else:
-            raise NoParentError("No parent exists for this Qoid")
+        return self.parent
 
     def all_of(self, tag: str):
         """
@@ -575,10 +552,10 @@ class Index:
             return all(e in other for e in self) and all(e in self for e in other)
         return False
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec=None):
         out = ""
         for e in self:
-            out += format(e, format_spec) + "\n"
+            out += format(e) + "\n"
         return out
 
     def __ge__(self, other):
@@ -774,10 +751,7 @@ class Index:
         """
         :return: the parent to this Index
         """
-        if self.parent:
-            return self.parent
-        else:
-            raise NoParentError("No parent exists for this Index")
+        return self.parent
 
     def index(self, tag):
         """
@@ -1052,11 +1026,11 @@ class Register:
             return all(e in other for e in self) and all(e in self for e in other)
         return False
 
-    def __format__(self, format_spec):
+    def __format__(self, format_spec=None):
         out = ""
         for e in self:
             out += f"/ {e.tag}\n\n"
-            out += format(e, format_spec)
+            out += format(e)
         return out
 
     def __ge__(self, other):
@@ -1275,14 +1249,9 @@ class Register:
 
     def get_parent(self):
         """
-        TODO: Probably change
-
         :return: the parent for this Register
         """
-        if self.parent:
-            return self.parent
-        else:
-            raise NoParentError(f"No parent exists for this Register {self.tag}")
+        return self.parent
 
     def index(self, item):
         """
