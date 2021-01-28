@@ -327,9 +327,9 @@ class Qoid:
 
     def extend(self, val: iter):
         """
-        Add all the properties given
+        Add all the Properties given to the Qoid
 
-        :param val: the properties to add
+        :param val: the Properties to add
         """
         for e in self:
             if not isinstance(val, Property):
@@ -338,7 +338,8 @@ class Qoid:
 
     def get(self, tag=None, n=-1):
         """
-        Get the first Property which matches the given tag, or the property at the given index.
+        Get the first Property which matches the given tag,
+        or the Property at the given index.
         If no argument is specified, returns all contents.
 
         :param tag: the tag to search for
@@ -432,20 +433,6 @@ class Qoid:
         """
         return Qoid(self.tag.lower(), copy.deepcopy(self.val))
 
-    def only(self, *items):
-        """
-        Find only the given Properties/tags
-
-        :param items: the Properties to be searched for
-        :return: a Qoid with only the properties found
-        """
-        out = []
-        for each in items:
-            # If each is a Property or str
-            if each in self:
-                out.append(each)
-        return Qoid(tag=self.tag, val=out)
-
     def pack(self):
         """
         Pack the contents of this qoid into a json-serialized format
@@ -538,7 +525,7 @@ class Qoid:
 
 
 class Index:
-    __doc__ = "An Index is a Qoid whose elements are Qoids"
+    __doc__ = "An Index is a Qoid whose elements are Qoids."
 
     def __init__(self, tag: str = "Index", val=None, parent=None):
         self.tag = str(tag)
@@ -724,31 +711,49 @@ class Index:
         return format(self)
 
     def append(self, item: Qoid):
+        """
+        Add the given Qoid to the Index.
+
+        :param item: the Qoid to be appended
+        """
         to_add = copy.deepcopy(item) if item.parent else item
         to_add.parent = self
         self.val.append(to_add)
 
-    def count(self, val):
+    def count(self, tag: str):
+        """
+        Count the number of occurrences of the given tag
+
+        :param tag: the tag to be matched
+        :return: the number of times the tag appears
+        """
         c = 0
         for e in self:
-            c += 1 if e.tag == val else 0
+            c += 1 if e.tag == tag else 0
         return c
 
     def extend(self, val: iter):
-        for e in self:
-            if not isinstance(val, Qoid):
-                raise TypeError(f"Unsupported {type(e)} in iterable, only Property is allowed")
+        """
+        Extend the contents of the Index with the given values
+
+        :param val: the set to extend with
+        """
+        for e in val:
+            if not isinstance(e, Qoid):
+                raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Index is allowed")
         self.val.extend(val)
 
-    """
-    Get the first Qoid which matches the given tag, or the property at the given index.
-    If no argument is specified, returns all contents.
-    """
-
     def get(self, tag=None, n=-1):
+        """
+        Get all Qoids which match the given tag.
+        If no argument is specified, returns all contents.
+
+        :param tag: the tag to match
+        :param n: the index to get; -1 means return all
+        """
         if tag:
             tag = str(tag)
-            out = Index("")
+            out = Index(self.tag)
             for e in self:
                 if e.tag == tag:
                     out.append(e)
@@ -758,81 +763,100 @@ class Index:
                 return out[0]
             else:
                 raise QoidError(f"'{tag}'")
+        elif n == -1:
+            return self.val
         else:
             if len(self) > n >= 0:
                 return self.val[n]
             raise IndexError("Qoid index out of range")
 
     def get_parent(self):
+        """
+        :return: the parent to this Index
+        """
         if self.parent:
             return self.parent
         else:
             raise NoParentError("No parent exists for this Index")
 
-    def glossary(self):
-        out = Qoid(self.tag)
-        for e in self:
-            out += Property(e.tag)
-        return out
+    def index(self, tag):
+        """
+        Get the first numerical index of a Qoid with the given tag
 
-    """Get the first index of a property with the given tag"""
-    def index(self, item):
-        if isinstance(item, Qoid):
+        :param tag: the tag to be matched
+        :return: the first numerical index of a Qoid with the given tag
+        """
+        if isinstance(tag, Qoid):
             for e in self:
-                if item == e:
+                if tag == e:
                     return self.val.index(e)
-            raise QoidError(f"'{item}'")
-        elif isinstance(item, str):
+            raise QoidError(f"'{tag}'")
+        elif isinstance(tag, str):
             for e in self:
-                if item == e.tag:
+                if tag == e.tag:
                     return self.val.index(e)
-            raise QoidError(f"'{format(item)}'")
+            raise QoidError(f"'{format(tag)}'")
         else:
-            raise TypeError(f"Invalid type {type(item)}, must use Property or str")
+            raise TypeError(f"Invalid type {type(tag)}, must use Property or str")
 
     def insert(self, index, obj):
+        """
+        Place the given Qoid or Index's contents at the given index
+
+        :param index: the numerical index to place the contents
+        :param obj: the contents to be placed
+        """
         if isinstance(index, int):
             if isinstance(obj, Qoid):
                 self.val = self[:index] + [obj] + self[index:]
             elif isinstance(obj, Index):
                 self.val = self[:index] + obj.val + self[index:]
             else:
-                raise TypeError(f"Unsupported type '{type(obj)}', must be 'Property' or 'Qoid'")
+                raise TypeError(f"Unsupported type '{type(obj)}', must be 'Qoid' or 'Index'")
         else:
-            raise TypeError(f"Unsupported type '{type(obj)}', must be 'int'")
+            raise TypeError(f"Unsupported type '{type(index)}', must be 'int'")
 
     def lower(self):
+        """
+        :return: the Index with the tag in lower case
+        """
         return Index(self.tag.lower(), copy.deepcopy(self.val))
 
-    def only(self, *items):
-        out = []
-        for each in items:
-            if each in self:
-                out.append(each)
-        return Index(tag=self.tag, val=out)
-
     @staticmethod
-    def open(source: str):
-        source = source.replace("/", "\\")
-        if os.path.isfile(source):
-            with open(source, "r") as f:
-                if source.endswith(".json"):
+    def open(source_file: str):
+        """
+        Read and parse a .cxr file
+
+        :param source_file: the file to be parsed
+        :return: an Index constructed out of the source file
+        """
+        source_file = source_file.replace("/", "\\")
+        if os.path.isfile(source_file):
+            with open(source_file, "r") as f:
+                if source_file.endswith(".json"):
                     content = json.load(fp=f)
                 else:
                     content = [l.replace("\n", "") for l in f.readlines()]
-                tag = source.split("\\")[-1]
+                tag = source_file.split("\\")[-1]
                 tag = tag.replace(".cxr", "")
                 out = Index.parse(content, tag=tag)
-                out.source = source
+                out.source = source_file
                 return out
         else:
-            raise FileNotFoundError(f"Invalid source specified: {source}")
+            raise FileNotFoundError(f"Invalid source specified: {source_file}")
 
-    """Pack the contents of this index into a json-serialized format"""
     def pack(self):
+        """
+        :return: the contents of this Index in a json-serialized format
+        """
         return {q.tag: [q.tags(), q.vals()] for q in self}
 
     def path_priority(self):
+        """
+        TODO: Deprecate
+
+        :return: the local path to which the file will save
+        """
         if self.path:
             return self.path
         elif self.source:
@@ -841,6 +865,11 @@ class Index:
             return self.tag + (".cxr" if not self.tag.endswith(q_fext) else "")
 
     def create_path(self):
+        """
+        TODO: Deprecate
+
+        :return: a file path for saving the given Index
+        """
         p = self.path_priority()
         if self.parent:
             out = self.parent.create_path()
@@ -849,7 +878,15 @@ class Index:
             return p
 
     @staticmethod
-    def parse(source, tag: str = "Parsed Index"):
+    def parse(source, tag: str = "Index"):
+        """
+        Parse the contents of a file, whether it's
+        lines of text or a dict
+
+        :param source: the contents to be parsed
+        :param tag: the tag value to give the parsed Index
+        :return: the parsed Index
+        """
         if isinstance(source, list):
             spool = None
             state = 0
@@ -905,35 +942,34 @@ class Index:
         else:
             raise TypeError(f"Illegal source of type {type(source)}: must be list or dict")
 
-    """Remove either the Qoid at the given index, with the given tag, or which matches the property given"""
-    def pop(self, this=None):
-        if not this:
-            return self.val.pop()
-        elif isinstance(this, int):
-            if len(self) > this >= 0:
-                return self.val.pop(this)
-            else:
-                raise IndexError("Qoid index out of range")
-        elif isinstance(this, str):
-            for e in self:
-                if e.tag == this:
-                    return self.val.pop(self.val.index(e))
-            raise QoidError(f"'{this}'")
-        elif isinstance(this, Qoid):
-            for e in self:
-                if e == this:
-                    return self.val.pop(self.val.index(e))
-            raise QoidError(f"'{this.tag}: {len(this)} item(s)'")
-        else:
-            raise TypeError(f"Unsupported type {type(this)}, must be int, str, or Property")
+    def pop(self, index=-1):
+        """
+        Remove the Qoid at the given numerical index
+
+        :param index: the numerical index to remove
+        :return: the Qoid popped from the Index
+        """
+        return self.val.pop(index)
 
     def reverse(self):
+        """
+        Reverse the value set of the Index
+        """
         self.val = reversed(self.val)
 
-    def sort(self, ignore_case=True):
-        self.val = sorted(self.val, key=Index.lower if ignore_case else None)
+    def sort(self):
+        """
+        Sort the contents of the Index
+        """
+        self.val = sorted(self.val, key=Index.lower)
 
-    def save(self, echo=False, is_json=False):
+    def save(self, echo=True, is_json=False):
+        """
+        Save
+
+        :param echo: decides whether to display debug information
+        :param is_json: determines whether the file should be json-serialized
+        """
         with open(self.create_path() + (".json" if is_json else ""), 'w+') as out:
             if is_json:
                 json.dump(obj=self.pack(), fp=out)
@@ -942,32 +978,29 @@ class Index:
         if echo:
             print(f"Index {self.tag} saved to {self.create_path()}")
 
-    """Get the set of all tags in this index"""
     def tags(self):
+        """
+        :return: the set of all tags in this Index
+        """
         return [e.tag for e in self]
 
     def update_parent(self):
+        """
+        Ensure that each member of the Index is properly parented
+        """
         for e in self:
             e.parent = self
             e.update_parent()
 
-    def without(self, *items):
-        out = copy.deepcopy(self)
-        for each in items:
-            try:
-                out.pop(each)
-            except QoidError:
-                # TODO
-                # print(qe)
-                pass
-        return out
-
     def vals(self):
+        """
+        :return: the set of values in the Index
+        """
         return [e.val for e in self]
 
 
 class Register:
-    __doc__ = "A register is a qoid whose elements are all indices"
+    __doc__ = "A register is a Qoid whose elements are all Indices or other Registers"
 
     def __init__(self, tag: str = "Register", val=None, parent=None):
         self.tag = str(tag)
@@ -980,8 +1013,10 @@ class Register:
                 for e in val:
                     if isinstance(e, (Register, Index)):
                         self.append(e)
+                    else:
+                        raise ValueError(f"Invalid val type {type(val)}, must submit Index or Register")
             else:
-                raise ValueError(f"Invalid val type {type(val)}, must submit Index or list")
+                raise ValueError(f"Invalid val type {type(val)}, must submit Index or Register")
 
     def __add__(self, other):
         out = copy.deepcopy(self)
@@ -1034,7 +1069,7 @@ class Register:
             step = item.step if item.step else 1
             return [self.val[i] for i in range(start, stop, step)]
         elif isinstance(item, int):
-            return self.get(n=item)
+            return self.get(index=item)
         elif isinstance(item, str):
             return self.get(tag=item)
         elif isinstance(item, tuple):
@@ -1151,6 +1186,11 @@ class Register:
         return format(self)
 
     def append(self, item):
+        """
+        Append the given Register or Index to the Register
+
+        :param item: the Register or Index to be added
+        """
         if isinstance(item, (Register, Index)):
             to_add = copy.deepcopy(item) if item.parent else item
             to_add.parent = self
@@ -1158,13 +1198,22 @@ class Register:
         else:
             raise ValueError(f"Can only append Register and Index, not {type(item)}")
 
-    def count(self, val):
+    def count(self, tag):
+        """
+        :param tag: the tag to be counted
+        :return: the number of occurrences of the given tag
+        """
         c = 0
         for e in self:
-            c += 1 if e.tag == val else 0
+            c += 1 if e.tag == tag else 0
         return c
 
     def path_priority(self):
+        """
+        TODO: deprecate
+
+        :return: the constructed path
+        """
         if self.path:
             return self.path
         elif self.source:
@@ -1173,6 +1222,11 @@ class Register:
             return self.tag + (".cxr" if not self.tag.endswith(q_fext) else "")
 
     def create_path(self):
+        """
+        TODO: deprecate
+
+        :return: the local path
+        """
         p = self.path_priority()
         if self.parent:
             out = self.parent.create_path()
@@ -1180,14 +1234,26 @@ class Register:
         else:
             return p
 
-    def extend(self, val):
-        for e in self:
-            if not isinstance(val, (Register, Index)):
+    def extend(self, val: iter):
+        """
+        Extend the contents of the Register with the given value
+
+        :param val: the set to extend with
+        """
+        for e in val:
+            if not isinstance(e, (Register, Index)):
                 raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Index is allowed")
         self.val.extend(val)
 
-    """Return the value at the given"""
-    def get(self, tag=None, n=-1):
+    def get(self, tag=None, index=-1):
+        """
+        Get the Register or Index with the given tag or at the given numerical index
+        If no arguments are specified, returns all contents
+
+        :param tag: the tag to match
+        :param index: the index to retrieve
+        :return: the value at the given tag or index
+        """
         if tag:
             tag = str(tag)
             out = Register(tag)
@@ -1200,24 +1266,31 @@ class Register:
                 return out[0]
             else:
                 raise QoidError(f"'{tag}'")
+        elif index == -1:
+            return self.val
         else:
-            if len(self) > n >= 0:
-                return self.val[n]
+            if len(self) > index >= 0:
+                return self.val[index]
             raise IndexError("Qoid index out of range")
 
     def get_parent(self):
+        """
+        TODO: Probably change
+
+        :return: the parent for this Register
+        """
         if self.parent:
             return self.parent
         else:
-            raise NoParentError("No parent exists for this Register")
-
-    def glossary(self):
-        out = Register(self.tag)
-        for e in self:
-            out += e.glossary()
-        return out
+            raise NoParentError(f"No parent exists for this Register {self.tag}")
 
     def index(self, item):
+        """
+        Gives the numerical index of the first occurrence of the item
+
+        :param item: the Index or Register to match
+        :return: the numerical index of the first occurrence of the item
+        """
         if isinstance(item, (Register, Index)):
             for e in self:
                 if item == e:
@@ -1232,6 +1305,12 @@ class Register:
             raise TypeError(f"Invalid type {type(item)}, must use Property or str")
 
     def insert(self, index, obj):
+        """
+        Insert the given Index or Register at the given numerical index
+
+        :param index: the numerical index to insert at
+        :param obj: the Index or Register to insert
+        """
         if isinstance(index, int):
             if isinstance(obj, Index):
                 self.val = self[:index] + [obj] + self[index:]
@@ -1243,37 +1322,44 @@ class Register:
             raise TypeError(f"Unsupported type '{type(obj)}', must be 'int'")
 
     def lower(self):
+        """
+        :return: the Register with the tag lower case
+        """
         return Register(self.tag.lower(), copy.deepcopy(self.val))
 
-    def only(self, *items):
-        out = []
-        for each in items:
-            if each in self:
-                out.append(each)
-        return Register(tag=self.tag, val=out)
-
     @staticmethod
-    def open(path: str):
-        path = path.replace("/", "\\")
-        if os.path.isdir(path):
-            out = Register(tag=path.split("\\")[-1])
-            out.path = path.rsplit("\\", 1)[0]
-            for e in os.listdir(path):
+    def open(source_folder: str):
+        """
+        Read and parse a .cxr folder
+
+        :param source_folder:
+        :return: the completed Register
+        """
+        source_folder = source_folder.replace("/", "\\")
+        if os.path.isdir(source_folder):
+            out = Register(tag=source_folder.split("\\")[-1])
+            out.path = source_folder.rsplit("\\", 1)[0]
+            for e in os.listdir(source_folder):
                 try:
-                    if os.path.isdir(os.path.join(path, e)) and e.endswith(q_dirext):
-                        i = Register.open(os.path.join(path, e))
+                    if os.path.isdir(os.path.join(source_folder, e)) and e.endswith(q_dirext):
+                        i = Register.open(os.path.join(source_folder, e))
                     elif e.endswith(q_fext):
-                        i = Index.open(os.path.join(path, e))
+                        i = Index.open(os.path.join(source_folder, e))
                     else:
                         raise QoidError("Invalid file type")
                     out += i
                 except QoidError:
-                    print(f"Ignoring invalid file type at {os.path.join(path, e)}")
+                    print(f"Ignoring invalid file type at {os.path.join(source_folder, e)}")
             return out
         else:
-            raise NotADirectoryError(f"Invalid source specified: {path}")
+            raise NotADirectoryError(f"Invalid source specified: {source_folder}")
 
     def pack(self):
+        """
+        TODO: test, probably fix
+
+        :return: the json-serialized Register
+        """
         out = {}
         reg = []
         ind = []
@@ -1286,34 +1372,32 @@ class Register:
         out.update({"Index": {e.tag: e.pack() for e in ind}})
         return {self.tag: [self.tags(), self.vals()]}
 
-    def pop(self, this=None):
-        if not this:
-            return self.val.pop()
-        elif isinstance(this, int):
-            if len(self) > this >= 0:
-                return self.val.pop(this)
-            else:
-                raise IndexError("Qoid index out of range")
-        elif isinstance(this, str):
-            for e in self:
-                if e.tag == this:
-                    return self.val.pop(self.val.index(e))
-            raise QoidError(f"'{this}'")
-        elif isinstance(this, (Register, Index)):
-            for e in self:
-                if e == this:
-                    return self.val.pop(self.val.index(e))
-            raise QoidError(f"'{this.tag}: {len(this)} item(s) not found in {self.tag}'")
-        else:
-            raise TypeError(f"Unsupported type {type(this)}, must be int, str, Register, or Index")
+    def pop(self, index=-1):
+        """
+        :param index: the numerical index to pop
+        :return: the popped value
+        """
+
+        return self.val.pop(index)
 
     def reverse(self):
+        """
+        Reverse the order of the values in the Register
+        """
         self.val = reversed(self.val)
 
-    def sort(self, ignore_case=True):
-        self.val = sorted(self.val, key=Register.lower if ignore_case else None)
+    def sort(self):
+        """
+        Sort the values in the Register
+        """
+        self.val = sorted(self.val, key=Register.lower)
 
-    def save(self, echo=False, echo_all=False):
+    def save(self, echo=True):
+        """
+        Save the Register to a .cxr folder
+
+        :param echo: determines whether the save debug message displays
+        """
         p = self.create_path()
         if not os.path.isdir(p):
             os.mkdir(p)
@@ -1322,29 +1406,26 @@ class Register:
                 p = e.create_path()
                 if not os.path.isdir(p):
                     os.mkdir(p)
-            # print(f"{self.tag}\t{e.tag}\t{e.create_path()}")
-            e.save(echo=echo_all)
+            e.save(echo=echo)
         if echo:
             print(f"Register {self.tag} saved to {self.create_path()}")
 
     def tags(self):
+        """
+        :return: a list of all tags in the Register
+        """
         return [e.tag for e in self]
 
     def update_parent(self):
+        """
+        Ensures the contents of the Register are properly parented
+        """
         for e in self:
             e.parent = self
             e.update_parent()
 
-    def without(self, *items):
-        out = copy.deepcopy(self)
-        for each in items:
-            try:
-                out.pop(each)
-            except QoidError:
-                # TODO
-                # print(qe)
-                pass
-        return out
-
     def vals(self):
+        """
+        :return: a list of all lists of values in the Register
+        """
         return [e.val for e in self]
