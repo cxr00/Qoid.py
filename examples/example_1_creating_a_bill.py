@@ -1,14 +1,14 @@
-from qoid import Property, Qoid, Index
+from qoid import Property, Qoid, Bill
 
 """
 
 This example showcases some of the typical ways by which
-an Index is created, modified, and saved.
+an Bill is created, modified, and saved.
 
 """
 
 # Create an empty index
-i = Index("index")
+i = Bill("index")
 
 # Create two empty qoids
 q1 = Qoid("qoid 1")
@@ -42,7 +42,7 @@ print()
 
 # This is the string representation of i translated to and from json
 # Note the difference between the cxr format
-print(Index.parse(i.pack()))
+print(Bill.parse(i.pack()))
 
 # This will simply save the index locally.
 # When echo is True, save confirmation will print for your index.

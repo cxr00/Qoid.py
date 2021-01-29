@@ -371,7 +371,7 @@ class Qoid:
 
     def get_parent(self):
         """
-        :return: the Index in which this Qoid is contained
+        :return: the Bill in which this Qoid is contained
         """
         return self.parent
 
@@ -509,22 +509,24 @@ class Qoid:
         return [e.val if e.val else "" for e in self]
 
 
-class Index:
-    __doc__ = "An Index is a Qoid whose elements are Qoids."
+class Bill:
+    __doc__ = "A Bill is a Qoid whose elements are Qoids."
 
-    def __init__(self, tag: str = "Index", val=None, parent=None):
+    def __init__(self, tag: str = "Bill", val=None, parent=None):
         self.tag = str(tag)
         self.val = []
         self.source = None
         self.path = None
         self.parent = parent
         if val:
-            if isinstance(val, (Index, list)):
+            if isinstance(val, (Bill, list)):
                 for e in val:
                     if isinstance(e, Qoid):
                         self.append(e)
+                    else:
+                        raise ValueError(f"Invalid val type {type(e)}, must be Qoid")
             else:
-                raise ValueError(f"Invalid val type {type(val)}, must submit Index or list")
+                raise ValueError(f"Invalid val type {type(val)}, must submit Bill or list")
 
     def __add__(self, other):
         out = copy.deepcopy(self)
@@ -556,7 +558,7 @@ class Index:
             raise ValueError(f"Invalid type {type(key)}, must use int or str")
 
     def __eq__(self, other):
-        if isinstance(other, Index):
+        if isinstance(other, Bill):
             return all(e in other for e in self) and all(e in self for e in other)
         return False
 
@@ -598,7 +600,7 @@ class Index:
             out = copy.deepcopy(self)
             out.append(Qoid(other.tag, other.val))
             return out
-        elif isinstance(other, Index):
+        elif isinstance(other, Bill):
             out = copy.deepcopy(self)
             for e in other:
                 out.append(Qoid(e.tag, e.val))
@@ -619,7 +621,7 @@ class Index:
             except QoidError:
                 pass
             return out
-        elif isinstance(subtra, Index):
+        elif isinstance(subtra, Bill):
             for e in subtra:
                 if e.val is None:
                     try:
@@ -638,7 +640,7 @@ class Index:
                 out -= e
             return out
         else:
-            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Index.__isub__(self, subtra)")
+            raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Bill.__isub__(self, subtra)")
 
     def __iter__(self):
         return iter(self.val)
@@ -657,17 +659,17 @@ class Index:
 
     def __radd__(self, other):
         if isinstance(other, Qoid):
-            out = Index(self.tag, [other])
+            out = Bill(self.tag, [other])
             out += self
             return out
         else:
             return NotImplemented
 
     def __repr__(self):
-        return f"Index({self.tag}, {self.val})"
+        return f"Bill({self.tag}, {self.val})"
 
     def __reversed__(self):
-        return Index(self.tag, val=reversed(self.val))
+        return Bill(self.tag, val=reversed(self.val))
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
@@ -697,7 +699,7 @@ class Index:
 
     def append(self, item: Qoid):
         """
-        Add the given Qoid to the Index.
+        Add the given Qoid to the Bill.
 
         :param item: the Qoid to be appended
         """
@@ -719,13 +721,13 @@ class Index:
 
     def extend(self, val: iter):
         """
-        Extend the contents of the Index with the given values
+        Extend the contents of the Bill with the given values
 
         :param val: the set to extend with
         """
         for e in val:
             if not isinstance(e, Qoid):
-                raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Index is allowed")
+                raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Bill is allowed")
         self.val.extend(val)
 
     def get(self, tag=None, n=-1):
@@ -738,7 +740,7 @@ class Index:
         """
         if tag:
             tag = str(tag)
-            out = Index(self.tag)
+            out = Bill(self.tag)
             for e in self:
                 if e.tag == tag:
                     out.append(e)
@@ -757,7 +759,7 @@ class Index:
 
     def get_parent(self):
         """
-        :return: the parent to this Index
+        :return: the parent to this Bill
         """
         return self.parent
 
@@ -783,7 +785,7 @@ class Index:
 
     def insert(self, index, obj):
         """
-        Place the given Qoid or Index's contents at the given index
+        Place the given Qoid or Bill's contents at the given index
 
         :param index: the numerical index to place the contents
         :param obj: the contents to be placed
@@ -791,18 +793,18 @@ class Index:
         if isinstance(index, int):
             if isinstance(obj, Qoid):
                 self.val = self[:index] + [obj] + self[index:]
-            elif isinstance(obj, Index):
+            elif isinstance(obj, Bill):
                 self.val = self[:index] + obj.val + self[index:]
             else:
-                raise TypeError(f"Unsupported type '{type(obj)}', must be 'Qoid' or 'Index'")
+                raise TypeError(f"Unsupported type '{type(obj)}', must be 'Qoid' or 'Bill'")
         else:
             raise TypeError(f"Unsupported type '{type(index)}', must be 'int'")
 
     def lower(self):
         """
-        :return: the Index with the tag in lower case
+        :return: the Bill with the tag in lower case
         """
-        return Index(self.tag.lower(), copy.deepcopy(self.val))
+        return Bill(self.tag.lower(), copy.deepcopy(self.val))
 
     @staticmethod
     def open(source_file: str):
@@ -810,7 +812,7 @@ class Index:
         Read and parse a .cxr file
 
         :param source_file: the file to be parsed
-        :return: an Index constructed out of the source file
+        :return: an Bill constructed out of the source file
         """
         source_file = source_file.replace("/", "\\")
         if os.path.isfile(source_file):
@@ -821,7 +823,7 @@ class Index:
                     content = [l.replace("\n", "") for l in f.readlines()]
                 tag = source_file.split("\\")[-1]
                 tag = tag.replace(".cxr", "")
-                out = Index.parse(content, tag=tag)
+                out = Bill.parse(content, tag=tag)
                 out.source = source_file
                 return out
         else:
@@ -829,7 +831,7 @@ class Index:
 
     def pack(self):
         """
-        :return: the contents of this Index in a json-serialized format
+        :return: the contents of this Bill in a json-serialized format
         """
         return {q.tag: [q.tags(), q.vals()] for q in self}
 
@@ -850,7 +852,7 @@ class Index:
         """
         TODO: Deprecate
 
-        :return: a file path for saving the given Index
+        :return: a file path for saving the given Bill
         """
         p = self.path_priority()
         if self.parent:
@@ -860,14 +862,14 @@ class Index:
             return p
 
     @staticmethod
-    def parse(source, tag: str = "Index"):
+    def parse(source, tag: str = "Bill"):
         """
         Parse the contents of a file, whether it's
         lines of text or a dict
 
         :param source: the contents to be parsed
-        :param tag: the tag value to give the parsed Index
-        :return: the parsed Index
+        :param tag: the tag value to give the parsed Bill
+        :return: the parsed Bill
         """
         if isinstance(source, list):
             spool = None
@@ -893,7 +895,7 @@ class Index:
                         spool += p
             if spool is not None:
                 val.append(spool)
-            return Index(tag=tag, val=val)
+            return Bill(tag=tag, val=val)
         elif isinstance(source, dict):
             qoids = []
             for key, value in source.items():
@@ -920,7 +922,7 @@ class Index:
                         raise QoidParseError("Invalid JSON format: value is not tag-value lists")
                 else:
                     raise QoidParseError("Invalid JSON format: json item is not a tag-value pair")
-            return Index(tag=tag, val=qoids)
+            return Bill(tag=tag, val=qoids)
         else:
             raise TypeError(f"Illegal source of type {type(source)}: must be list or dict")
 
@@ -929,19 +931,19 @@ class Index:
         Remove the Qoid at the given numerical index
 
         :param index: the numerical index to remove
-        :return: the Qoid popped from the Index
+        :return: the Qoid popped from the Bill
         """
         return self.val.pop(index)
 
     def reverse(self):
         """
-        Reverse the value set of the Index
+        Reverse the value set of the Bill
         """
         self.val = reversed(self.val)
 
     def sort(self):
         """
-        Sort the contents of the Index
+        Sort the contents of the Bill
         """
         self.val = sorted(self.val, key=Qoid.lower)
 
@@ -958,17 +960,17 @@ class Index:
             else:
                 out.write(format(self))
         if echo:
-            print(f"Index {self.tag} saved to {self.create_path()}")
+            print(f"Bill {self.tag} saved to {self.create_path()}")
 
     def tags(self):
         """
-        :return: the set of all tags in this Index
+        :return: the set of all tags in this Bill
         """
         return [e.tag for e in self]
 
     def update_parent(self):
         """
-        Ensure that each member of the Index is properly parented
+        Ensure that each member of the Bill is properly parented
         """
         for e in self:
             e.parent = self
@@ -976,7 +978,7 @@ class Index:
 
     def vals(self):
         """
-        :return: the set of values in the Index
+        :return: the set of values in the Bill
         """
         return [e.val for e in self]
 
@@ -993,12 +995,12 @@ class Register:
         if val:
             if isinstance(val, (Register, list)):
                 for e in val:
-                    if isinstance(e, (Register, Index)):
+                    if isinstance(e, (Register, Bill)):
                         self.append(e)
                     else:
-                        raise ValueError(f"Invalid val type {type(val)}, must submit Index or Register")
+                        raise ValueError(f"Invalid val type {type(val)}, must submit Bill or Register")
             else:
-                raise ValueError(f"Invalid val type {type(val)}, must submit Index or Register")
+                raise ValueError(f"Invalid val type {type(val)}, must submit Bill or Register")
 
     def __add__(self, other):
         out = copy.deepcopy(self)
@@ -1011,7 +1013,7 @@ class Register:
         return str.encode(format(self))
 
     def __contains__(self, item):
-        if isinstance(item, (Register, Index)):
+        if isinstance(item, (Register, Bill)):
             for e in self:
                 if item == e:
                     return True
@@ -1066,9 +1068,9 @@ class Register:
         return hash(str(self))
 
     def __iadd__(self, other):
-        if isinstance(other, Index):
+        if isinstance(other, Bill):
             out = copy.deepcopy(self)
-            out.append(Index(other.tag, other.val))
+            out.append(Bill(other.tag, other.val))
             return out
         elif isinstance(other, Register):
             out = copy.deepcopy(self)
@@ -1085,7 +1087,7 @@ class Register:
     """Subtraction removes the subtrahend from the minuend if it exists"""
     def __isub__(self, subtra):
         out = copy.deepcopy(self)
-        if isinstance(subtra, (int, str, Index)):
+        if isinstance(subtra, (int, str, Bill)):
             try:
                 out.pop(subtra)
             except QoidError:
@@ -1128,7 +1130,7 @@ class Register:
         return not self.__eq__(other)
 
     def __radd__(self, other):
-        if isinstance(other, Index):
+        if isinstance(other, Bill):
             out = Register(self.tag, [other])
             out += self
             return out
@@ -1143,19 +1145,19 @@ class Register:
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
-            if isinstance(value, Index):
+            if isinstance(value, Bill):
                 self.val[key] = value
             elif isinstance(value, tuple) and len(value) == 2:
-                self.val[key] = Index(value[0], value[1])
+                self.val[key] = Bill(value[0], value[1])
             else:
-                self.val[key] = Index(self.val[key].tag, value)
+                self.val[key] = Bill(self.val[key].tag, value)
         elif isinstance(key, str):
-            if isinstance(value, Index):
+            if isinstance(value, Bill):
                 self.val[self.index(key)] = value
             elif isinstance(value, tuple) and len(value) == 2:
-                self.val[self.index(key)] = Index(value[0], value[1])
+                self.val[self.index(key)] = Bill(value[0], value[1])
             else:
-                self.val[self.index(key)] = Index(key, value)
+                self.val[self.index(key)] = Bill(key, value)
         else:
             raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value)")
 
@@ -1169,16 +1171,16 @@ class Register:
 
     def append(self, item):
         """
-        Append the given Register or Index to the Register
+        Append the given Register or Bill to the Register
 
-        :param item: the Register or Index to be added
+        :param item: the Register or Bill to be added
         """
-        if isinstance(item, (Register, Index)):
+        if isinstance(item, (Register, Bill)):
             to_add = copy.deepcopy(item) if item.parent else item
             to_add.parent = self
             self.val.append(to_add)
         else:
-            raise ValueError(f"Can only append Register and Index, not {type(item)}")
+            raise ValueError(f"Can only append Register and Bill, not {type(item)}")
 
     def count(self, tag):
         """
@@ -1223,13 +1225,13 @@ class Register:
         :param val: the set to extend with
         """
         for e in val:
-            if not isinstance(e, (Register, Index)):
-                raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Index is allowed")
+            if not isinstance(e, (Register, Bill)):
+                raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Bill is allowed")
         self.val.extend(val)
 
     def get(self, tag=None, index=-1):
         """
-        Get the Register or Index with the given tag or at the given numerical index
+        Get the Register or Bill with the given tag or at the given numerical index
         If no arguments are specified, returns all contents
 
         :param tag: the tag to match
@@ -1265,10 +1267,10 @@ class Register:
         """
         Gives the numerical index of the first occurrence of the item
 
-        :param item: the Index or Register to match
+        :param item: the Bill or Register to match
         :return: the numerical index of the first occurrence of the item
         """
-        if isinstance(item, (Register, Index)):
+        if isinstance(item, (Register, Bill)):
             for e in self:
                 if item == e:
                     return self.val.index(e)
@@ -1283,13 +1285,13 @@ class Register:
 
     def insert(self, index, obj):
         """
-        Insert the given Index or Register at the given numerical index
+        Insert the given Bill or Register at the given numerical index
 
         :param index: the numerical index to insert at
-        :param obj: the Index or Register to insert
+        :param obj: the Bill or Register to insert
         """
         if isinstance(index, int):
-            if isinstance(obj, Index):
+            if isinstance(obj, Bill):
                 self.val = self[:index] + [obj] + self[index:]
             elif isinstance(obj, Register):
                 self.val = self[:index] + obj.val + self[index:]
@@ -1321,7 +1323,7 @@ class Register:
                     if os.path.isdir(os.path.join(source_folder, e)) and e.endswith(q_dirext):
                         i = Register.open(os.path.join(source_folder, e))
                     elif e.endswith(q_fext):
-                        i = Index.open(os.path.join(source_folder, e))
+                        i = Bill.open(os.path.join(source_folder, e))
                     else:
                         raise QoidError("Invalid file type")
                     out += i
@@ -1346,7 +1348,7 @@ class Register:
             else:
                 ind.append(e)
         out.update({"Register": {e.tag: e.pack() for e in reg}})
-        out.update({"Index": {e.tag: e.pack() for e in ind}})
+        out.update({"Bill": {e.tag: e.pack() for e in ind}})
         return {self.tag: [self.tags(), self.vals()]}
 
     def pop(self, index=-1):

@@ -1,8 +1,8 @@
-from qoid import Index, Register
+from qoid import Bill, Register
 
-# First we'll instantiate a Register and an Index
+# First we'll instantiate a Register and an Bill
 r = Register("register")
-i = Index("index")
+i = Bill("index")
 r += i
 
 # Next, we'll instantiate another Register and add a copy of i to it
