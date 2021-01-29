@@ -148,6 +148,11 @@ class Qoid:
 
     def __eq__(self, other):
         if isinstance(other, Qoid):
+            if self.tag != other.tag:
+                return False
+            elif len(self) != len(other):
+                return False
+
             temp = copy.deepcopy(other.val)
 
             for each in self:
@@ -172,13 +177,11 @@ class Qoid:
             start = item.start if item.start else 0
             stop = item.stop if item.stop else len(self)
             step = item.step if item.step else 1
-            return [self.val[i] for i in range(start, stop, step)]
+            return Qoid(self.tag, [self.val[i] for i in range(start, stop, step)])
         elif isinstance(item, int):
             return self.get(n=item)
         elif isinstance(item, str):
             return self.get(tag=item)
-        # elif isinstance(item, tuple):
-        #     return self.get(tag=item[0]).val
         else:
             raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
@@ -198,11 +201,6 @@ class Qoid:
             for e in other:
                 out.append(Property(e.tag, e.val))
             return out
-        # elif isinstance(other, list):
-        #     out = copy.deepcopy(self)
-        #     for e in other:
-        #         out += e
-        #     return out
         else:
             raise ValueError(f"Incompatible type {type(other)}")
 
@@ -227,11 +225,6 @@ class Qoid:
                     except QoidError:
                         pass
             return out
-        # elif isinstance(subtra, list):
-        #     out = copy.deepcopy(self)
-        #     for e in subtra:
-        #         out -= e
-        #     return out
         else:
             raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Qoid.__isub__(self, subtra)")
 
@@ -269,15 +262,11 @@ class Qoid:
         if isinstance(key, int):
             if isinstance(value, Property):
                 self.val[key] = value
-            # elif isinstance(value, tuple) and len(value) == 2:
-            #     self.val[key] = Property(value[0], value[1])
             else:
                 self.val[key] = Property(self.val[key].tag, value)
         elif isinstance(key, str):
             if isinstance(value, Property):
                 self.val[self.index(key)] = value
-            # elif isinstance(value, tuple) and len(value) == 2:
-            #     self.val[self.index(key)] = Property(value[0], value[1])
             else:
                 self.val[self.index(key)] = Property(key, value)
         else:
@@ -351,16 +340,9 @@ class Qoid:
         :return: the first Property with the given tag; at the given index; or the set of Properties
         """
         if tag:
-            # tag = str(tag)
-            # out = Qoid(self.tag)
             for e in self:
                 if e.tag == tag:
                     return e
-            # if len(out) > 1:
-            #     return out
-            # elif len(out) == 1:
-            #     return out.get(n=0)
-            # else:
             raise QoidError(f"'{tag}'")
         elif n == -1:
             return self.val
@@ -559,7 +541,20 @@ class Bill:
 
     def __eq__(self, other):
         if isinstance(other, Bill):
-            return all(e in other for e in self) and all(e in self for e in other)
+            if self.tag != other.tag:
+                return False
+            elif len(self) != len(other):
+                return False
+
+            # Due to the way __contains__ works, this is necessary
+            temp = copy.deepcopy(other.val)
+
+            for each in self:
+                if each in temp:
+                    temp.pop(temp.index(each))
+
+            if len(temp) == 0:
+                return True
         return False
 
     def __format__(self, format_spec=None):
@@ -576,16 +571,11 @@ class Bill:
             start = item.start if item.start else 0
             stop = item.stop if item.stop else len(self)
             step = item.step if item.step else 1
-            return [self.val[i] for i in range(start, stop, step)]
+            return Bill(tag=self.tag, val=[self.val[i] for i in range(start, stop, step)])
         elif isinstance(item, int):
             return self.get(n=item)
         elif isinstance(item, str):
             return self.get(tag=item)
-        elif isinstance(item, tuple):
-            if len(item) > 1:
-                return self.get(tag=item[0])[item[1]]
-            else:
-                return self.get(tag=item[0])
         else:
             raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
@@ -605,39 +595,26 @@ class Bill:
             for e in other:
                 out.append(Qoid(e.tag, e.val))
             return out
-        elif isinstance(other, list):
-            out = copy.deepcopy(self)
-            for e in other:
-                out += e
-            return out
         else:
-            raise ValueError(f"Incompatible operands {type(self)} and {type(other)}")
+            raise ValueError(f"Incompatible operands Bill and {type(other)}")
 
     def __isub__(self, subtra):
         out = copy.deepcopy(self)
-        if isinstance(subtra, (int, str, Qoid)):
-            try:
-                out.pop(subtra)
-            except QoidError:
-                pass
+        if isinstance(subtra, Qoid):
+            out.pop(out.index(subtra))
             return out
         elif isinstance(subtra, Bill):
             for e in subtra:
                 if e.val is None:
                     try:
-                        out.pop(e.tag)
+                        out.pop(out.index(e.tag))
                     except QoidError:
                         pass
                 else:
                     try:
-                        out.pop(e)
+                        out.pop(out.index(e))
                     except QoidError:
                         pass
-            return out
-        elif isinstance(subtra, list):
-            out = copy.deepcopy(self)
-            for e in subtra:
-                out -= e
             return out
         else:
             raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Bill.__isub__(self, subtra)")
@@ -669,25 +646,21 @@ class Bill:
         return f"Bill({self.tag}, {self.val})"
 
     def __reversed__(self):
-        return Bill(self.tag, val=reversed(self.val))
+        return Bill(self.tag, val=list(reversed(self.val)))
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
             if isinstance(value, Qoid):
                 self.val[key] = value
-            elif isinstance(value, tuple) and len(value) == 2:
-                self.val[key] = Qoid(value[0], value[1])
             else:
-                self.val[key] = Qoid(self.val[key].tag, value)
+                raise ValueError(f"Unsupported type {type(value)} for 'value in Qoid.__setitem__(self, key, value); must be Qoid")
         elif isinstance(key, str):
             if isinstance(value, Qoid):
                 self.val[self.index(key)] = value
-            elif isinstance(value, tuple) and len(value) == 2:
-                self.val[self.index(key)] = Qoid(value[0], value[1])
             else:
-                self.val[self.index(key)] = Qoid(key, value)
+                raise ValueError(f"Unsupported type {type(value)} for 'value in Qoid.__setitem__(self, key, value); must be Qoid")
         else:
-            raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value)")
+            raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value); must be int or str")
 
     def __sub__(self, other):
         out = copy.deepcopy(self)
@@ -743,13 +716,8 @@ class Bill:
             out = Bill(self.tag)
             for e in self:
                 if e.tag == tag:
-                    out.append(e)
-            if len(out) > 1:
-                return out
-            elif len(out) == 1:
-                return out[0]
-            else:
-                raise QoidError(f"'{tag}'")
+                    return e
+            raise QoidError(f"'{tag}'")
         elif n == -1:
             return self.val
         else:
@@ -763,25 +731,24 @@ class Bill:
         """
         return self.parent
 
-    def index(self, tag):
+    def index(self, item):
         """
-        Get the first numerical index of a Qoid with the given tag
+        Get the first index of a Qoid with the given tag
 
-        :param tag: the tag to be matched
-        :return: the first numerical index of a Qoid with the given tag
+        :param item: the tag to be matched
+        :return: the first index of a Qoid with the given tag
         """
-        if isinstance(tag, Qoid):
+        if isinstance(item, Qoid):
+            if item in self:
+                return self.val.index(item)
+            raise QoidError(f"'{item}'")
+        elif isinstance(item, str):
             for e in self:
-                if tag == e:
+                if item == e.tag:
                     return self.val.index(e)
-            raise QoidError(f"'{tag}'")
-        elif isinstance(tag, str):
-            for e in self:
-                if tag == e.tag:
-                    return self.val.index(e)
-            raise QoidError(f"'{format(tag)}'")
+            raise QoidError(f"'{item}'")
         else:
-            raise TypeError(f"Invalid type {type(tag)}, must use Property or str")
+            raise TypeError(f"Invalid type {type(item)}, must use Qoid or str")
 
     def insert(self, index, obj):
         """
@@ -792,9 +759,9 @@ class Bill:
         """
         if isinstance(index, int):
             if isinstance(obj, Qoid):
-                self.val = self[:index] + [obj] + self[index:]
+                self.val = self[:index].val + [obj] + self[index:].val
             elif isinstance(obj, Bill):
-                self.val = self[:index] + obj.val + self[index:]
+                self.val = self[:index].val + obj.val + self[index:].val
             else:
                 raise TypeError(f"Unsupported type '{type(obj)}', must be 'Qoid' or 'Bill'")
         else:
@@ -831,6 +798,8 @@ class Bill:
 
     def pack(self):
         """
+        TODO: fix or deprecate
+
         :return: the contents of this Bill in a json-serialized format
         """
         return {q.tag: [q.tags(), q.vals()] for q in self}
@@ -905,7 +874,7 @@ class Bill:
                     v = value[1]
                     # Step 2: ensure both value elements are lists
                     if isinstance(t, list) and isinstance(v, list) and len(t) == len(v):
-                        # Step 3: ensure all elements are stringsytz
+                        # Step 3: ensure all elements are strings
                         for e in t:
                             if not isinstance(e, str):
                                 raise QoidParseError("Invalid JSON format: tags contain non-string")
@@ -928,9 +897,9 @@ class Bill:
 
     def pop(self, index=-1):
         """
-        Remove the Qoid at the given numerical index
+        Remove the Qoid at the given index
 
-        :param index: the numerical index to remove
+        :param index: the index to remove
         :return: the Qoid popped from the Bill
         """
         return self.val.pop(index)
@@ -939,13 +908,13 @@ class Bill:
         """
         Reverse the value set of the Bill
         """
-        self.val = reversed(self.val)
+        self.val = list(reversed(self.val))
 
     def sort(self):
         """
         Sort the contents of the Bill
         """
-        self.val = sorted(self.val, key=Qoid.lower)
+        self.val.sort(key=Qoid.lower)
 
     def save(self, echo=True, is_json=False):
         """
@@ -1051,7 +1020,7 @@ class Register:
             start = item.start if item.start else 0
             stop = item.stop if item.stop else len(self)
             step = item.step if item.step else 1
-            return [self.val[i] for i in range(start, stop, step)]
+            return Register(self.tag, [self.val[i] for i in range(start, stop, step)])
         elif isinstance(item, int):
             return self.get(index=item)
         elif isinstance(item, str):
@@ -1229,9 +1198,9 @@ class Register:
                 raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Bill is allowed")
         self.val.extend(val)
 
-    def get(self, tag=None, index=-1):
+    def get(self, tag:str = None, index=-1):
         """
-        Get the Register or Bill with the given tag or at the given numerical index
+        Get the Register or Bill with the given tag or at the given index
         If no arguments are specified, returns all contents
 
         :param tag: the tag to match
