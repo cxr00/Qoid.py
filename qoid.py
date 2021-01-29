@@ -776,7 +776,7 @@ class Bill:
     @staticmethod
     def open(source_file: str):
         """
-        Read and parse a .cxr file
+        Read and parse a .cxr or .json file
 
         :param source_file: the file to be parsed
         :return: an Bill constructed out of the source file
@@ -786,13 +786,15 @@ class Bill:
             with open(source_file, "r") as f:
                 if source_file.endswith(".json"):
                     content = json.load(fp=f)
-                else:
+                elif source_file.endswith(".cxr"):
                     content = [l.replace("\n", "") for l in f.readlines()]
-                tag = source_file.split("\\")[-1]
-                tag = tag.replace(".cxr", "")
-                out = Bill.parse(content, tag=tag)
-                out.source = source_file
-                return out
+                    tag = source_file.split("\\")[-1]
+                    tag = tag.replace(".cxr", "")
+                    out = Bill.parse(content, tag=tag)
+                    out.source = source_file
+                    return out
+                else:
+                    raise TypeError(f"Invalid file type; must be .json or .cxr")
         else:
             raise FileNotFoundError(f"Invalid source specified: {source_file}")
 
