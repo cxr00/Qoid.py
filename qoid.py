@@ -12,7 +12,7 @@ q_dirext = tuple(".cxr")
 
 
 class QoidError(KeyError):
-    __doc__ = "A QoidError is raised for KeyErrors and KeyError-like problems which occur specifically in qoid.py."
+    __doc__ = "A QoidError is raised for KeyErrors and KeyError-like problems which occur specifically in qoid_test.py."
 
 
 class NoPathError(ValueError):
@@ -84,7 +84,7 @@ class Property:
         return self.parent
 
     def lower(self):
-        return Property(self.tag.lower(), self.val.lower())
+        return Property(self.tag.lower(), self.val.lower() if self.val else "")
 
     def set(self, tag=None, val=None):
         """
@@ -148,7 +148,14 @@ class Qoid:
 
     def __eq__(self, other):
         if isinstance(other, Qoid):
-            return all(e in other for e in self) and all(e in self for e in other)
+            temp = copy.deepcopy(other.val)
+
+            for each in self:
+                if each in temp:
+                    temp.pop(temp.index(each))
+
+            if len(temp) == 0:
+                return True
         return False
 
     def __format__(self, format_spec=None):
@@ -165,13 +172,13 @@ class Qoid:
             start = item.start if item.start else 0
             stop = item.stop if item.stop else len(self)
             step = item.step if item.step else 1
-            return [self.val[i].val for i in range(start, stop, step)]
+            return [self.val[i] for i in range(start, stop, step)]
         elif isinstance(item, int):
-            return self.get(n=item).val
+            return self.get(n=item)
         elif isinstance(item, str):
-            return self.get(tag=item).val
-        elif isinstance(item, tuple):
-            return self.get(tag=item[0]).val
+            return self.get(tag=item)
+        # elif isinstance(item, tuple):
+        #     return self.get(tag=item[0]).val
         else:
             raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
@@ -191,17 +198,17 @@ class Qoid:
             for e in other:
                 out.append(Property(e.tag, e.val))
             return out
-        elif isinstance(other, list):
-            out = copy.deepcopy(self)
-            for e in other:
-                out += e
-            return out
+        # elif isinstance(other, list):
+        #     out = copy.deepcopy(self)
+        #     for e in other:
+        #         out += e
+        #     return out
         else:
-            raise ValueError(f"Incompatible operands {type(self)} and {type(other)}")
+            raise ValueError(f"Incompatible type {type(other)}")
 
     def __isub__(self, subtra):
         out = copy.deepcopy(self)
-        if isinstance(subtra, (int, str, Property)):
+        if isinstance(subtra, Property):
             try:
                 out.pop(subtra)
             except QoidError:
@@ -220,11 +227,11 @@ class Qoid:
                     except QoidError:
                         pass
             return out
-        elif isinstance(subtra, list):
-            out = copy.deepcopy(self)
-            for e in subtra:
-                out -= e
-            return out
+        # elif isinstance(subtra, list):
+        #     out = copy.deepcopy(self)
+        #     for e in subtra:
+        #         out -= e
+        #     return out
         else:
             raise TypeError(f"Unsupported type {type(subtra)} for subtrahend in Qoid.__isub__(self, subtra)")
 
@@ -252,24 +259,25 @@ class Qoid:
             return NotImplemented
 
     def __repr__(self):
-        return f"Qoid({self.tag}, {self.val})"
+        # TODO: fix
+        return f"Qoid({self.tag}, {[repr(v) for v in self.val]})"
 
     def __reversed__(self):
-        return Qoid(self.tag, val=reversed(self.val))
+        return Qoid(self.tag, val=list(reversed(self.val)))
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
             if isinstance(value, Property):
                 self.val[key] = value
-            elif isinstance(value, tuple) and len(value) == 2:
-                self.val[key] = Property(value[0], value[1])
+            # elif isinstance(value, tuple) and len(value) == 2:
+            #     self.val[key] = Property(value[0], value[1])
             else:
                 self.val[key] = Property(self.val[key].tag, value)
         elif isinstance(key, str):
             if isinstance(value, Property):
                 self.val[self.index(key)] = value
-            elif isinstance(value, tuple) and len(value) == 2:
-                self.val[self.index(key)] = Property(value[0], value[1])
+            # elif isinstance(value, tuple) and len(value) == 2:
+            #     self.val[self.index(key)] = Property(value[0], value[1])
             else:
                 self.val[self.index(key)] = Property(key, value)
         else:
@@ -282,6 +290,22 @@ class Qoid:
 
     def __str__(self):
         return format(self)
+
+    def all_of(self, tag: str):
+        """
+        Finds all instances of the given tag
+
+        :param tag: the tag to search for
+        :return: a list of all Properties with the given tag
+        """
+        if tag:
+            out = []
+            for e in self:
+                if e.tag == tag:
+                    out.append(e)
+            return out
+        else:
+            raise QoidError(f"{tag}")
 
     def append(self, item: Property):
         """
@@ -312,11 +336,11 @@ class Qoid:
         :param val: the Properties to add
         """
         for e in self:
-            if not isinstance(val, Property):
+            if not isinstance(e, Property):
                 raise TypeError(f"Unsupported {type(e)} in iterable, only Property is allowed")
         self.val.extend(val)
 
-    def get(self, tag=None, n=-1):
+    def get(self, tag:str = None, n=-1):
         """
         Get the first Property which matches the given tag,
         or the Property at the given index.
@@ -327,17 +351,17 @@ class Qoid:
         :return: the first Property with the given tag; at the given index; or the set of Properties
         """
         if tag:
-            tag = str(tag)
-            out = Qoid(self.tag)
+            # tag = str(tag)
+            # out = Qoid(self.tag)
             for e in self:
                 if e.tag == tag:
-                    out.append(e)
-            if len(out) > 1:
-                return out
-            elif len(out) == 1:
-                return out.get(n=0)
-            else:
-                raise QoidError(f"'{tag}'")
+                    return e
+            # if len(out) > 1:
+            #     return out
+            # elif len(out) == 1:
+            #     return out.get(n=0)
+            # else:
+            raise QoidError(f"'{tag}'")
         elif n == -1:
             return self.val
         else:
@@ -350,22 +374,6 @@ class Qoid:
         :return: the Index in which this Qoid is contained
         """
         return self.parent
-
-    def all_of(self, tag: str):
-        """
-        Finds all instances of the given tag
-
-        :param tag: the tag to search for
-        :return: a list of all Properties with the given tag
-        """
-        if tag:
-            out = []
-            for e in self:
-                if e.tag == tag:
-                    out.append(e.val)
-            return out
-        else:
-            raise QoidError(f"{tag}")
 
     def index(self, item):
         """
@@ -400,9 +408,9 @@ class Qoid:
             elif isinstance(obj, Qoid):
                 self.val = self[:index] + obj.val + self[index:]
             else:
-                raise TypeError(f"Unsupported type '{type(obj)}', must be 'Property' or 'Qoid'")
+                raise TypeError(f"Unsupported type '{type(obj)}' for argument 'obj', must be 'Property' or 'Qoid'")
         else:
-            raise TypeError(f"Unsupported type '{type(obj)}', must be 'int'")
+            raise TypeError(f"Unsupported type '{type(obj)}' for argument 'index', must be 'int'")
 
     def lower(self):
         """
@@ -450,7 +458,7 @@ class Qoid:
         """
         Reverse the order of the Properties in the Qoid
         """
-        self.val = reversed(self.val)
+        self.val = list(reversed(self.val))
 
     def set(self, tag=None, index=-1, val=None):
         """
@@ -478,7 +486,7 @@ class Qoid:
         """
         Sort the Properties in the given Qoid
         """
-        self.val = sorted(self.val, key=Property.lower)
+        self.val.sort(key=Property.lower)
 
     def tags(self):
         """
