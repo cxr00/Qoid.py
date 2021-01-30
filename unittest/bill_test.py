@@ -52,10 +52,6 @@ print(format(b_a))
 print(format(b_c))
 print()
 
-print("hash")
-print(hash(b_b))
-print()
-
 print("isub")
 b_a -= q_c
 print(b_a)
