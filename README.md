@@ -9,9 +9,9 @@ All objects in qoid.py have string tags, with the values adding recursive depth.
 >>> b = Property("tag2", "value2")
 >>> c = Qoid("qoid tag", [a, b])
 >>> d = Qoid("other qoid tag", [b, a, b])
->>> e = Index("test index", [c, d])
+>>> e = Bill("test bill", [c, d])
 >>>> print(e)
-/ test index
+/ test bill
 
 #qoid tag
 tag: value
@@ -32,18 +32,18 @@ Property and Qoid object can be created with four parameters:
 
 While Indices and Registers have two additional parameters:
 
-*class qoid.Index(tag: str="Index", val=None, source=None, path=None, parent=None)*  
+*class qoid.Bill(tag: str="Bill", val=None, source=None, path=None, parent=None)*  
 *class qoid.Register(tag: str="Register", val=None, source=None, path=None, parent=None)*
  
 List functions including (but not limited to) append, index, pop, and iter are available as class attributes. Elements are automatically parented when added to objects, and should not be set manually
  
- ## Saving and Opening Indices and Registers
+ ## Saving and Opening Bills and Registers
  
-Indices and Registers construct a file path to save their data by prioritizing (in order): the parent, the path, and the source of the object. If a parent exists, it extends the parent's path. Otherwise it will save locally
+Bills and Registers construct a file path to save their data by prioritizing (in order): the parent, the path, and the source of the object. If a parent exists, it extends the parent's path. Otherwise it will save locally
  
 If an instance variable *path* exists, then that completes the path; if not, and the object has a source specified (e.g. from Index.open or Register.open) then it uses that; if it has neither of them, then it will attempt to use its tag.
 
-When opening an Index or Register, only files ending in .cxr, .meta, and .txt and folders ending in .cxr will be loaded. If one is created with a tag not ending in one of those file formats, then a `.cxr` extension is automatically added
+When opening a Bill or Register, only files and folders ending in .cxr will be loaded. If one is created with a tag not ending in one of those file formats, then a `.cxr` extension is automatically added
 
 ## Built-ins
 
