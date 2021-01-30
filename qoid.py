@@ -6,10 +6,6 @@ import os
 import json
 import copy
 
-# Permitted file and directory extensions to read as Qoid
-q_fext = (".cxr", ".txt")
-q_dirext = tuple(".cxr")
-
 
 class QoidError(KeyError):
     __doc__ = "A QoidError is raised for KeyErrors and KeyError-like problems which occur specifically in qoid_test.py."
@@ -826,7 +822,7 @@ class Bill:
         if self.path:
             return self.path
         else:
-            return self.tag + (".cxr" if not self.tag.endswith(q_fext) else "")
+            return self.tag + (".cxr" if not self.tag.endswith(".cxr") else "")
 
     def create_path(self):
         """
@@ -1090,7 +1086,7 @@ class Register:
             return out
         elif isinstance(subtra, Register):
             try:
-                out.pop(out.index(subtra.tag))
+                out.pop(out.index(subtra))
             except QoidError:
                 pass
             return out
@@ -1182,7 +1178,7 @@ class Register:
         if self.path:
             return self.path
         else:
-            return self.tag + (".cxr" if not self.tag.endswith(q_fext) else "")
+            return self.tag + (".cxr" if not self.tag.endswith(".cxr") else "")
 
     def create_path(self):
         """
@@ -1206,7 +1202,7 @@ class Register:
                 raise TypeError(f"Unsupported {type(e)} in iterable, only Register or Bill is allowed")
         self.val.extend(val)
 
-    def get(self, tag:str = None, index=-1):
+    def get(self, tag: str = None, index=-1):
         """
         Get the Register or Bill with the given tag or at the given index
         If no arguments are specified, returns all contents
@@ -1297,9 +1293,9 @@ class Register:
             out.path = source_folder.rsplit("\\", 1)[0]
             for e in os.listdir(source_folder):
                 try:
-                    if os.path.isdir(os.path.join(source_folder, e)) and e.endswith(q_dirext):
+                    if os.path.isdir(os.path.join(source_folder, e)) and e.endswith(".cxr"):
                         i = Register.open(os.path.join(source_folder, e))
-                    elif e.endswith(q_fext):
+                    elif e.endswith(".cxr"):
                         i = Bill.open(os.path.join(source_folder, e))
                     else:
                         raise QoidError("Invalid file type")
