@@ -158,6 +158,8 @@ class Qoid:
             for each in self:
                 if each in temp:
                     temp.pop(temp.index(each))
+                else:
+                    return False
 
             if len(temp) == 0:
                 return True
@@ -201,8 +203,13 @@ class Qoid:
             for e in other:
                 out.append(Property(e.tag, e.val))
             return out
+        elif isinstance(other, list):
+            out = copy.deepcopy(self)
+            for e in other:
+                out += e
+            return out
         else:
-            raise ValueError(f"Incompatible type {type(other)}")
+            raise ValueError(f"Incompatible type {type(other)}, must be Property or Qoid")
 
     def __isub__(self, subtra):
         out = copy.deepcopy(self)
@@ -497,7 +504,6 @@ class Bill:
     def __init__(self, tag: str = "Bill", val=None, parent=None):
         self.tag = str(tag)
         self.val = []
-        self.source = None
         self.path = None
         self.parent = parent
         if val:
@@ -552,6 +558,8 @@ class Bill:
             for each in self:
                 if each in temp:
                     temp.pop(temp.index(each))
+                else:
+                    return False
 
             if len(temp) == 0:
                 return True
@@ -594,6 +602,11 @@ class Bill:
             out = copy.deepcopy(self)
             for e in other:
                 out.append(Qoid(e.tag, e.val))
+            return out
+        elif isinstance(other, list):
+            out = copy.deepcopy(self)
+            for e in other:
+                out += e
             return out
         else:
             raise ValueError(f"Incompatible operands Bill and {type(other)}")
@@ -754,7 +767,7 @@ class Bill:
         """
         Place the given Qoid or Bill's contents at the given index
 
-        :param index: the numerical index to place the contents
+        :param index: the index to place the contents
         :param obj: the contents to be placed
         """
         if isinstance(index, int):
@@ -808,21 +821,15 @@ class Bill:
 
     def path_priority(self):
         """
-        TODO: Deprecate
-
         :return: the local path to which the file will save
         """
         if self.path:
             return self.path
-        elif self.source:
-            return self.source
         else:
             return self.tag + (".cxr" if not self.tag.endswith(q_fext) else "")
 
     def create_path(self):
         """
-        TODO: Deprecate
-
         :return: a file path for saving the given Bill
         """
         p = self.path_priority()
@@ -955,12 +962,11 @@ class Bill:
 
 
 class Register:
-    __doc__ = "A register is a Qoid whose elements are all Indices or other Registers"
+    __doc__ = "A register is a Qoid whose elements are all Bills or other Registers"
 
     def __init__(self, tag: str = "Register", val=None, parent=None):
         self.tag = str(tag)
         self.val = []
-        self.source = None
         self.path = None
         self.parent = parent
         if val:
@@ -1004,7 +1010,21 @@ class Register:
 
     def __eq__(self, other):
         if isinstance(other, Register):
-            return all(e in other for e in self) and all(e in self for e in other)
+            if self.tag != other.tag:
+                return False
+            elif len(self) != len(other):
+                return False
+
+            temp = copy.deepcopy(other.val)
+
+            for each in self:
+                if each in temp:
+                    temp.pop(temp.index(each))
+                else:
+                    return False
+
+            if len(temp) == 0:
+                return True
         return False
 
     def __format__(self, format_spec=None):
@@ -1027,8 +1047,6 @@ class Register:
             return self.get(index=item)
         elif isinstance(item, str):
             return self.get(tag=item)
-        elif isinstance(item, tuple):
-            return self.get(item[0])[item[1:]]
         else:
             raise ValueError(f"Invalid type {type(item)}, must use slice, int, or str")
 
@@ -1041,12 +1059,18 @@ class Register:
     def __iadd__(self, other):
         if isinstance(other, Bill):
             out = copy.deepcopy(self)
-            out.append(Bill(other.tag, other.val))
-            return out
+            if other.tag in out:
+                raise ValueError(f"Bill {other.tag} already exists within the Register")
+            else:
+                out.append(Bill(other.tag, other.val))
+                return out
         elif isinstance(other, Register):
             out = copy.deepcopy(self)
-            out.append(Register(other.tag, other.val))
-            return out
+            if other.tag in out:
+                raise ValueError(f"Register {other.tag} already exists within the Register")
+            else:
+                out.append(Register(other.tag, other.val))
+                return out
         elif isinstance(other, list):
             out = copy.deepcopy(self)
             for e in other:
@@ -1058,27 +1082,19 @@ class Register:
     """Subtraction removes the subtrahend from the minuend if it exists"""
     def __isub__(self, subtra):
         out = copy.deepcopy(self)
-        if isinstance(subtra, (int, str, Bill)):
+        if isinstance(subtra, Bill):
             try:
-                out.pop(subtra)
+                out.pop(out.index(subtra.tag))
             except QoidError:
                 pass
             return out
-        elif isinstance(subtra, Qoid):
-            for e in subtra:
-                if e.val is None:
-                    try:
-                        out.pop(e.tag)
-                    except QoidError:
-                        pass
-                else:
-                    try:
-                        out.pop(e)
-                    except QoidError:
-                        pass
+        elif isinstance(subtra, Register):
+            try:
+                out.pop(out.index(subtra.tag))
+            except QoidError:
+                pass
             return out
         elif isinstance(subtra, list):
-            out = copy.deepcopy(self)
             for e in subtra:
                 out -= e
             return out
@@ -1116,19 +1132,15 @@ class Register:
 
     def __setitem__(self, key, value):
         if isinstance(key, int):
-            if isinstance(value, Bill):
+            if isinstance(value, (Bill, Register)):
                 self.val[key] = value
-            elif isinstance(value, tuple) and len(value) == 2:
-                self.val[key] = Bill(value[0], value[1])
             else:
-                self.val[key] = Bill(self.val[key].tag, value)
+                raise TypeError(f"Unsupported type {type(value)}; must be Bill or Register")
         elif isinstance(key, str):
-            if isinstance(value, Bill):
+            if isinstance(value, (Bill, Register)):
                 self.val[self.index(key)] = value
-            elif isinstance(value, tuple) and len(value) == 2:
-                self.val[self.index(key)] = Bill(value[0], value[1])
             else:
-                self.val[self.index(key)] = Bill(key, value)
+                raise TypeError(f"Unsupported type {type(value)}; must be Bill or Register")
         else:
             raise TypeError(f"Unsupported type {type(key)} for 'key' in Qoid.__setitem__(self, key, value)")
 
@@ -1165,21 +1177,15 @@ class Register:
 
     def path_priority(self):
         """
-        TODO: deprecate
-
         :return: the constructed path
         """
         if self.path:
             return self.path
-        elif self.source:
-            return self.source
         else:
             return self.tag + (".cxr" if not self.tag.endswith(q_fext) else "")
 
     def create_path(self):
         """
-        TODO: deprecate
-
         :return: the local path
         """
         p = self.path_priority()
@@ -1236,10 +1242,10 @@ class Register:
 
     def index(self, item):
         """
-        Gives the numerical index of the first occurrence of the item
+        Gives the index of the first occurrence of the item
 
         :param item: the Bill or Register to match
-        :return: the numerical index of the first occurrence of the item
+        :return: the index of the first occurrence of the item
         """
         if isinstance(item, (Register, Bill)):
             for e in self:
@@ -1256,16 +1262,16 @@ class Register:
 
     def insert(self, index, obj):
         """
-        Insert the given Bill or Register at the given numerical index
+        Insert the given Bill or Register at the given index
 
-        :param index: the numerical index to insert at
+        :param index: the index to insert at
         :param obj: the Bill or Register to insert
         """
         if isinstance(index, int):
             if isinstance(obj, Bill):
-                self.val = self[:index] + [obj] + self[index:]
+                self.val = self[:index].val + [obj] + self[index:].val
             elif isinstance(obj, Register):
-                self.val = self[:index] + obj.val + self[index:]
+                self.val = self[:index].val + obj.val + self[index:].val
             else:
                 raise TypeError(f"Unsupported type '{type(obj)}', must be 'Property' or 'Qoid'")
         else:
@@ -1324,17 +1330,16 @@ class Register:
 
     def pop(self, index=-1):
         """
-        :param index: the numerical index to pop
+        :param index: the index to pop
         :return: the popped value
         """
-
         return self.val.pop(index)
 
     def reverse(self):
         """
         Reverse the order of the values in the Register
         """
-        self.val = reversed(self.val)
+        self.val = list(reversed(self.val))
 
     def save(self, echo=True):
         """
