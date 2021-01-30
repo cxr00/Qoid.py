@@ -970,8 +970,6 @@ class Register:
         out += other
         return out
 
-    def __bool__(self): return bool(self.tag) or bool(self.val)
-
     def __bytes__(self):
         return str.encode(format(self))
 
