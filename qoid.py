@@ -951,7 +951,7 @@ class Register:
     __doc__ = "A register is a Qoid whose elements are all Bills or other Registers"
 
     def __init__(self, tag: str = "Register", val=None, parent=None):
-        self.tag = str(tag)
+        self.tag = tag[:-4] if tag.endswith(".cxr") else tag
         self.val = []
         self.path = None
         self.parent = parent
