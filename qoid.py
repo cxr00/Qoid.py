@@ -11,10 +11,6 @@ class QoidError(KeyError):
     __doc__ = "A QoidError is raised for KeyErrors and KeyError-like problems which occur specifically in qoid_test.py."
 
 
-class NoPathError(ValueError):
-    __doc__ = "A NoSourcePathError is raised when attempting to save anything without a source, root, or target file path"
-
-
 class QoidParseError(SyntaxError):
     __doc__ = "A QoidParseError is raised for any SyntaxError involving the parsing of a file using Qoid markup."
 
