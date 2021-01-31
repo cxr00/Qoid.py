@@ -7,13 +7,15 @@ All objects in qoid.py have string tags, with the values adding recursive depth.
 Objects in qoid.py can be created very quickly, then printed in its Qoid representation.
 
 ```python
->>> a = Property("tag", "value")
->>> b = Property("tag2", "value2")
->>> c = Qoid("qoid tag", [a, b])
->>> d = Qoid("other qoid tag", [b, a, b])
->>> e = Bill("test bill", [c, d])
->>>> print(e)
-
+from qoid import Property, Qoid, Bill
+a = Property("tag", "value")
+b = Property("tag2", "value2")
+c = Qoid("qoid tag", [a, b])
+d = Qoid("other qoid tag", [b, a, b])
+e = Bill("test bill", [c, d])
+print(e)
+```
+```
 / test bill
 
 #qoid tag
@@ -25,12 +27,126 @@ tag2: value2
 tag: value
 tag2: value2
 ```
- 
-## Saving and Opening Bills and Registers
+## Properties
 
-To save a Bill or Register, simply use my_bill.save() or my_register.save(). Each Bill and Register has a `path` variable which may be specified. If `path` is not specified, then files will be saved locally.
+A Property is a tag-value pair. The tag and value may be changed via the set function,
+or by directly accessing the class variables.
 
-When opening a Bill or Register, only files and folders ending in `.cxr` can be loaded. The path specified is saved in the object for future saving.
+```python
+from qoid import Property
+p_a = Property("tag", "value")
+print(p_a)
+p_a.set(val="new value")
+print(p_a)
+p_a.tag ="new tag"
+print(p_a)
+```
+```
+tag: value
+tag: new value
+new tag: new value
+```
+
+## Qoids
+
+Like Properties, Qoids are a tag-value pair. However, instead of a string, the value is a list of Properties.
+
+Qoids are printed using a simple ini-like markup language.
+
+```python
+from qoid import Property, Qoid
+p_a = Property("tag1", "value1")
+p_b = Property("tag2", "value2")
+
+q_a = Qoid("qoid1", [p_b, p_a])
+print(q_a)
+```
+```
+#qoid1
+tag2: value2
+tag1: value1
+```
+
+## Bills
+
+A Bill is a Qoid whose value is a list of Qoids. Bills may be saved to and loaded from `.cxr` files.
+
+```python
+from qoid import Property, Qoid, Bill
+p_a = Property("tag1", "value1")
+p_b = Property("tag2", "value2")
+
+q_a = Qoid("qoid1", [p_b, p_a])
+q_b = Qoid("qoid2", [p_b])
+
+b_a = Bill("Bill 1", [q_a, q_a, q_b])
+print(b_a)
+print()
+
+b_a.save()
+```
+```
+#qoid1
+tag2: value2
+tag1: value1
+
+#qoid1
+tag2: value2
+tag1: value1
+
+#qoid2
+tag2: value2
+
+Bill Bill 1 saved to Bill 1.cxr
+```
+
+## Registers
+
+A Register is a Qoid whose value set contains Bills and Registers.
+Registers may be saved to and loaded from folders which end in `.cxr`.
+
+```python
+from qoid import Property, Qoid, Bill, Register
+p_a = Property("tag1", "value1")
+p_b = Property("tag2", "value2")
+
+q_a = Qoid("qoid1", [p_b, p_a])
+q_b = Qoid("qoid2", [p_b])
+
+b_a = Bill("Bill 1", [q_a, q_a, q_b])
+b_b = Bill("Bill 2", [q_b, q_b])
+
+r_a = Register("Register A", [b_a, b_b])
+print(r_a)
+
+r_a.save()
+```
+```
+/ Bill 1
+
+#qoid1
+tag2: value2
+tag1: value1
+
+#qoid1
+tag2: value2
+tag1: value1
+
+#qoid2
+tag2: value2
+
+/ Bill 2
+
+#qoid2
+tag2: value2
+
+#qoid2
+tag2: value2
+
+Bill Bill 1 saved to Register A.cxr/Bill 1.cxr
+Bill Bill 2 saved to Register A.cxr/Bill 2.cxr
+Register Register A saved to Register A.cxr
+```
 
 
 
