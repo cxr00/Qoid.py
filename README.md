@@ -16,8 +16,6 @@ e = Bill("test bill", [c, d])
 print(e)
 ```
 ```
-/ test bill
-
 #qoid tag
 tag: value
 tag2: value2
@@ -147,7 +145,6 @@ Bill Bill 1 saved to Register A.cxr/Bill 1.cxr
 Bill Bill 2 saved to Register A.cxr/Bill 2.cxr
 Register Register A saved to Register A.cxr
 ```
-
 
 
 ## Built-ins
