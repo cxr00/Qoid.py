@@ -948,7 +948,7 @@ class Bill:
 
 
 class Register:
-    __doc__ = "A register is a Qoid whose elements are all Bills or other Registers"
+    __doc__ = "A Register is a Qoid whose elements are all Bills or other Registers"
 
     def __init__(self, tag: str = "Register", val=None, parent=None):
         self.tag = tag[:-4] if tag.endswith(".cxr") else tag
@@ -956,14 +956,16 @@ class Register:
         self.path = None
         self.parent = parent
         if val:
-            if isinstance(val, (Register, list)):
+            if isinstance(val, (list, tuple)):
                 for e in val:
                     if isinstance(e, (Register, Bill)):
                         self.append(e)
                     else:
-                        raise ValueError(f"Invalid val type {type(val)}, must submit Bill or Register")
+                        raise ValueError(f"Invalid val type {type(e)} in {type(val)}, must be Bill or Register")
+            elif isinstance(val, (Bill, Register)):
+                self.append(val)
             else:
-                raise ValueError(f"Invalid val type {type(val)}, must submit Bill or Register")
+                raise ValueError(f"Invalid val type {type(val)}, must be list, tuple, Bill, or Register")
 
     def __add__(self, other):
         out = copy.deepcopy(self)
