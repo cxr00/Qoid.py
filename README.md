@@ -2,9 +2,10 @@
 
 Qoid is a simple markup language which uses tag-value pairs to record data in traditional files and folders with the added depth of tagged elements within each file.
 
-All objects in qoid.py have string tags, with the values adding recursive depth. Start with a Property, which is a tag-value pair. Then a Qoid tags a list of Properties, a Bill tags a list of Qoids, and a Register tags a list of Bills and Registers.
+All objects in qoid.py have string tags, with values which add recursive depth. Start with a Property, which is a tag-value pair. Then a Qoid tags a list of Properties, a Bill tags a list of Qoids, and a Register tags a list of Bills and Registers.
+An object in qoid.py can be created very quickly, then viewed or saved in its Qoid representation.
 
-Objects in qoid.py can be created very quickly, then printed in its Qoid representation.
+Some examples are provided below. To see the full range of utility of Qoid, check the sample code in the __unittest__ package.
 
 ```python
 from qoid import Property, Qoid, Bill
