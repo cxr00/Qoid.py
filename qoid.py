@@ -395,14 +395,6 @@ class Qoid:
         """
         return Qoid(self.tag.lower(), copy.deepcopy(self.val))
 
-    def pack(self):
-        """
-        Pack the contents of this qoid into a json-serialized format
-
-        :return: the json-serialized Qoid
-        """
-        return {self.tag: [self.tags(), self.vals()]}
-
     def pop(self, this=None):
         """
         Remove either the property at the given index, with the given tag,
@@ -783,9 +775,7 @@ class Bill:
         source_file = source_file.replace("/", "\\")
         if os.path.isfile(source_file):
             with open(source_file, "r") as f:
-                if source_file.endswith(".json"):
-                    content = json.load(fp=f)
-                elif source_file.endswith(".cxr"):
+                if source_file.endswith(".cxr"):
                     content = [l.replace("\n", "") for l in f.readlines()]
                     tag = source_file.split("\\")[-1]
                     tag = tag.replace(".cxr", "")
@@ -793,17 +783,10 @@ class Bill:
                     out.source = source_file
                     return out
                 else:
-                    raise TypeError(f"Invalid file type; must be .json or .cxr")
+                    raise TypeError(f"Invalid file type; must be .cxr")
         else:
             raise FileNotFoundError(f"Invalid source specified: {source_file}")
 
-    def pack(self):
-        """
-        TODO: fix or deprecate
-
-        :return: the contents of this Bill in a json-serialized format
-        """
-        return {q.tag: [q.tags(), q.vals()] for q in self}
 
     def path_priority(self):
         """
@@ -911,18 +894,14 @@ class Bill:
         """
         self.val.sort(key=Qoid.lower)
 
-    def save(self, echo=True, is_json=False):
+    def save(self, echo=True):
         """
         Save
 
         :param echo: decides whether to display debug information
-        :param is_json: determines whether the file should be json-serialized
         """
-        with open(self.create_path() + (".json" if is_json else ""), 'w+') as out:
-            if is_json:
-                json.dump(obj=self.pack(), fp=out)
-            else:
-                out.write(format(self))
+        with open(self.create_path(), 'w+') as out:
+            out.write(format(self))
         if echo:
             print(f"Bill {self.tag} saved to {self.create_path()}")
 
@@ -1295,24 +1274,6 @@ class Register:
             return out
         else:
             raise NotADirectoryError(f"Invalid source specified: {source_folder}")
-
-    def pack(self):
-        """
-        TODO: test, probably fix
-
-        :return: the json-serialized Register
-        """
-        out = {}
-        reg = []
-        ind = []
-        for e in self:
-            if isinstance(e, Register):
-                reg.append(e)
-            else:
-                ind.append(e)
-        out.update({"Register": {e.tag: e.pack() for e in reg}})
-        out.update({"Bill": {e.tag: e.pack() for e in ind}})
-        return {self.tag: [self.tags(), self.vals()]}
 
     def pop(self, index=-1):
         """
