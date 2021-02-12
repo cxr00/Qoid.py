@@ -1124,9 +1124,12 @@ class Register:
         :param item: the Register or Bill to be added
         """
         if isinstance(item, (Register, Bill)):
-            to_add = copy.deepcopy(item) if item.parent else item
-            to_add.parent = self
-            self.val.append(to_add)
+            if item.tag not in self:
+                to_add = copy.deepcopy(item) if item.parent else item
+                to_add.parent = self
+                self.val.append(to_add)
+            else:
+                raise KeyError(f"Bill or Register with tag {item.tag} already exists in Register")
         else:
             raise ValueError(f"Can only append Register and Bill, not {type(item)}")
 
