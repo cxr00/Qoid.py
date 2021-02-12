@@ -3,7 +3,6 @@ Qoid is a database-like serialization API for reading and writing miscellaneous 
 """
 
 import os
-import json
 import copy
 
 
