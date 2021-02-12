@@ -276,8 +276,6 @@ class Qoid:
 
     def all_of(self, tag: str):
         """
-        Finds all instances of the given tag
-
         :param tag: the tag to search for
         :return: a list of all Properties with the given tag
         """
@@ -659,6 +657,20 @@ class Bill:
 
     def __str__(self):
         return format(self)
+
+    def all_of(self, tag: str):
+        """
+        :param tag: the tag to search for
+        :return: a list of all Qoids with the given tag
+        """
+        if tag:
+            out = []
+            for e in self:
+                if e.tag == tag:
+                    out.append(e)
+            return out
+        else:
+            raise QoidError(f"{tag}")
 
     def append(self, item: Qoid):
         """

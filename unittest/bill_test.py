@@ -97,6 +97,10 @@ b_a["Qoid B"] = q_a
 print(b_a)
 print()
 
+print("all_of")
+print(b_a.all_of("Qoid A"))
+print()
+
 print("count")
 print(b_a.count("Qoid B"))
 print(b_a.count("Qoid C"))
@@ -106,10 +110,6 @@ print("insert")
 b_a.insert(1, b_a)
 b_a.insert(3, q_c)
 print(b_a)
-print()
-
-print("pack")
-print(b_a.pack())
 print()
 
 print("reverse")
