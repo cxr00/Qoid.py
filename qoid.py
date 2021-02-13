@@ -1257,7 +1257,7 @@ class Register:
         source_folder = source_folder.replace("/", "\\")
         if os.path.isdir(source_folder):
             out = Register(tag=source_folder.split("\\")[-1])
-            out.path = source_folder.rsplit("\\", 1)[0]
+            out.path = source_folder
             for e in os.listdir(source_folder):
                 try:
                     if os.path.isdir(os.path.join(source_folder, e)) and e.endswith(".cxr"):
