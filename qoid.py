@@ -279,14 +279,11 @@ class Qoid:
         :param tag: the tag to search for
         :return: a list of all Properties with the given tag
         """
-        if tag:
-            out = []
-            for e in self:
-                if e.tag == tag:
-                    out.append(e)
-            return out
-        else:
-            raise QoidError(f"{tag}")
+        out = []
+        for e in self:
+            if e.tag == tag:
+                out.append(e)
+        return out
 
     def append(self, item: Property):
         """
@@ -663,14 +660,11 @@ class Bill:
         :param tag: the tag to search for
         :return: a list of all Qoids with the given tag
         """
-        if tag:
-            out = []
-            for e in self:
-                if e.tag == tag:
-                    out.append(e)
-            return out
-        else:
-            raise QoidError(f"{tag}")
+        out = []
+        for e in self:
+            if e.tag == tag:
+                out.append(e)
+        return out
 
     def append(self, item: Qoid):
         """
@@ -1143,16 +1137,6 @@ class Register:
                 raise KeyError(f"Bill or Register with tag {item.tag} already exists in Register")
         else:
             raise ValueError(f"Can only append Register and Bill, not {type(item)}")
-
-    def count(self, tag):
-        """
-        :param tag: the tag to be counted
-        :return: the number of occurrences of the given tag
-        """
-        c = 0
-        for e in self:
-            c += 1 if e.tag == tag else 0
-        return c
 
     def path_priority(self):
         """

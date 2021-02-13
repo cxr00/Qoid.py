@@ -79,10 +79,6 @@ r_a[2] = r_b
 print(r_a)
 print()
 
-print("count")
-print(r_a.count("Register B"))
-print()
-
 print("insert")
 r_a.insert(2, b_c)
 print(r_a)
