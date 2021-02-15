@@ -1255,17 +1255,18 @@ class Register:
         :return: the completed Register
         """
         source_folder = source_folder.replace("/", "\\")
-        if os.path.isdir(source_folder):
+        if os.path.isdir(source_folder) and source_folder.endswith(".cxr"):
             out = Register(tag=source_folder.split("\\")[-1])
             out.path = source_folder
             for e in os.listdir(source_folder):
                 try:
-                    if os.path.isdir(os.path.join(source_folder, e)) and e.endswith(".cxr"):
-                        i = Register.open(os.path.join(source_folder, e))
-                    elif e.endswith(".cxr"):
-                        i = Bill.open(os.path.join(source_folder, e))
+                    if e.endswith(".cxr"):
+                        if os.path.isdir(os.path.join(source_folder, e)):
+                            i = Register.open(os.path.join(source_folder, e))
+                        else:
+                            i = Bill.open(os.path.join(source_folder, e))
                     else:
-                        raise QoidError("Invalid file type")
+                        raise QoidError("Invalid file type, must be .cxr")
                     out += i
                 except QoidError:
                     print(f"Ignoring invalid file type at {os.path.join(source_folder, e)}")
