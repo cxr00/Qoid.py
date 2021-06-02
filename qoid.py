@@ -780,7 +780,7 @@ class Bill:
         source_file = source_file.replace("/", "\\")
         if os.path.isfile(source_file):
             with open(source_file, "r") as f:
-                if source_file.endswith(".cxr"):
+                if source_file.endswith(".cxr") or source_file.endswith(".meta"):
                     content = [l.replace("\n", "") for l in f.readlines()]
                     tag = source_file.split("\\")[-1]
                     tag = tag.replace(".cxr", "")
@@ -788,10 +788,9 @@ class Bill:
                     out.source = source_file
                     return out
                 else:
-                    raise TypeError(f"Invalid file type; must be .cxr")
+                    raise TypeError(f"Invalid file type; must be .cxr or .meta")
         else:
             raise FileNotFoundError(f"Invalid source specified: {source_file}")
-
 
     def path_priority(self):
         """
@@ -799,6 +798,8 @@ class Bill:
         """
         if self.path:
             return self.path
+        elif self.tag == ".meta":
+            return self.tag
         else:
             return self.tag + (".cxr" if not self.tag.endswith(".cxr") else "")
 
@@ -934,11 +935,12 @@ class Bill:
 class Register:
     __doc__ = "A Register is a Qoid whose elements are all Bills or other Registers"
 
-    def __init__(self, tag: str = "Register", val=None, parent=None):
+    def __init__(self, tag: str = "Register", val=None, parent=None, meta=None):
         self.tag = tag[:-4] if tag.endswith(".cxr") else tag
         self.val = []
         self.path = None
         self.parent = parent
+        self.meta = meta if meta else Bill(".meta", parent=self)
         if val:
             if isinstance(val, (list, tuple)):
                 for e in val:
@@ -964,6 +966,8 @@ class Register:
             for e in self:
                 if item == e:
                     return True
+            if item == self.meta:
+                return True
         elif isinstance(item, str):
             for e in self:
                 if item == e.tag:
@@ -983,6 +987,8 @@ class Register:
             if self.tag != other.tag:
                 return False
             elif len(self) != len(other):
+                return False
+            elif self.meta != other.meta:
                 return False
 
             temp = copy.deepcopy(other.val)
@@ -1244,7 +1250,7 @@ class Register:
         """
         :return: the Register with the tag lower case
         """
-        return Register(self.tag.lower(), copy.deepcopy(self.val))
+        return Register(self.tag.lower(), copy.deepcopy(self.val), parent=self.parent, meta=self.meta)
 
     @staticmethod
     def open(source_folder: str):
@@ -1260,14 +1266,18 @@ class Register:
             out.path = source_folder
             for e in os.listdir(source_folder):
                 try:
-                    if e.endswith(".cxr"):
+                    if e.endswith(".cxr") or e == ".meta":
                         if os.path.isdir(os.path.join(source_folder, e)):
                             i = Register.open(os.path.join(source_folder, e))
                         else:
                             i = Bill.open(os.path.join(source_folder, e))
+
                     else:
-                        raise QoidError("Invalid file type, must be .cxr")
-                    out += i
+                        raise QoidError("Invalid file type, must be .cxr or .meta")
+                    if e == ".meta":
+                        out.meta = i
+                    else:
+                        out += i
                 except QoidError:
                     print(f"Ignoring invalid file type at {os.path.join(source_folder, e)}")
             return out
@@ -1302,6 +1312,7 @@ class Register:
                 if not os.path.isdir(p):
                     os.mkdir(p)
             e.save(echo=echo)
+        self.meta.save(echo)
         if echo:
             print(f"Register {self.tag} saved to {self.create_path()}")
 
