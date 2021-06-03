@@ -24,6 +24,3 @@ print(r_a)
 print("open")
 r_a = Register.open("Example Register.cxr")
 print(r_a)
-
-print("pack")
-print(r_a.pack())
